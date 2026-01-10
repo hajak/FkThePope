@@ -17,9 +17,11 @@ const httpServer = createServer(app);
 
 const io = new Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>(httpServer, {
   cors: {
-    origin: isProduction ? undefined : (process.env.CLIENT_URL ?? 'http://localhost:5173'),
+    origin: isProduction ? true : (process.env.CLIENT_URL ?? 'http://localhost:5173'),
     methods: ['GET', 'POST'],
+    credentials: true,
   },
+  transports: ['websocket', 'polling'],
 });
 
 // Health check endpoint
@@ -32,8 +34,12 @@ if (isProduction) {
   const clientDist = join(__dirname, '../../client/dist');
   app.use(express.static(clientDist));
 
-  // SPA fallback - serve index.html for all non-API routes
-  app.get('*', (_req, res) => {
+  // SPA fallback - serve index.html for all non-API/socket routes
+  app.get('*', (req, res, next) => {
+    // Don't intercept socket.io requests
+    if (req.path.startsWith('/socket.io')) {
+      return next();
+    }
     res.sendFile(join(clientDist, 'index.html'));
   });
 }
