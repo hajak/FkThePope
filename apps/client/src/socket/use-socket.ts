@@ -1,6 +1,6 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import type { Card, PlayerPosition, Rule } from '@fkthepope/shared';
-import { getSocket, connectSocket, disconnectSocket } from './socket-client';
+import { getSocket, connectSocket, disconnectSocket, onConnectionChange, storeSession, clearSession } from './socket-client';
 import { useGameStore } from '../stores/game-store';
 import { useLobbyStore } from '../stores/lobby-store';
 import { useUiStore } from '../stores/ui-store';
@@ -12,8 +12,11 @@ export function useSocket() {
   const setConnected = useGameStore((s) => s.setConnected);
   const setRoom = useGameStore((s) => s.setRoom);
   const setGameState = useGameStore((s) => s.setGameState);
+  const setGameStatePreservingTrick = useGameStore((s) => s.setGameStatePreservingTrick);
   const setLastViolation = useGameStore((s) => s.setLastViolation);
   const setWaitingFor = useGameStore((s) => s.setWaitingFor);
+  const preserveTrick = useGameStore((s) => s.preserveTrick);
+  const clearPreservedTrick = useGameStore((s) => s.clearPreservedTrick);
   const reset = useGameStore((s) => s.reset);
 
   const setRooms = useLobbyStore((s) => s.setRooms);
@@ -22,17 +25,35 @@ export function useSocket() {
 
   const showToast = useUiStore((s) => s.showToast);
   const setShowRuleCreator = useUiStore((s) => s.setShowRuleCreator);
+  const setConnectionState = useUiStore((s) => s.setConnectionState);
+  const startTrickAnimation = useUiStore((s) => s.startTrickAnimation);
+  const cleanup = useUiStore((s) => s.cleanup);
+
+  // Track if we're in trick animation to preserve cards
+  const isAnimatingRef = useRef(false);
 
   useEffect(() => {
     const socket = getSocket();
 
+    // Subscribe to connection state changes
+    const unsubscribeConnection = onConnectionChange((connected, reconnecting) => {
+      setConnectionState(connected, reconnecting);
+      if (reconnecting) {
+        showToast('Reconnecting to server...', 'warning');
+      } else if (connected) {
+        showToast('Connected!', 'success');
+      }
+    });
+
     // Connection events
     socket.on('connected', ({ playerId }) => {
       setConnected(true, playerId);
+      setConnectionState(true);
     });
 
     socket.on('disconnect', () => {
       setConnected(false);
+      setConnectionState(false);
     });
 
     socket.on('error', ({ message }) => {
@@ -47,6 +68,9 @@ export function useSocket() {
     socket.on('room-joined', ({ roomId, position, players }) => {
       setRoom(roomId, position);
       setCurrentRoom({ id: roomId, players });
+      // Store session for reconnection
+      const playerName = useGameStore.getState().playerName;
+      storeSession(roomId, position, playerName);
     });
 
     socket.on('room-updated', ({ players }) => {
@@ -56,6 +80,7 @@ export function useSocket() {
     socket.on('room-left', () => {
       reset();
       setCurrentRoom(null);
+      clearSession();
     });
 
     // Game events
@@ -65,7 +90,12 @@ export function useSocket() {
     });
 
     socket.on('game-state', ({ gameState }) => {
-      setGameState(gameState);
+      // Use preserving version if we're animating
+      if (isAnimatingRef.current) {
+        setGameStatePreservingTrick(gameState);
+      } else {
+        setGameState(gameState);
+      }
     });
 
     socket.on('hand-started', ({ handNumber, trumpSuit }) => {
@@ -92,22 +122,20 @@ export function useSocket() {
     });
 
     socket.on('trick-complete', ({ winner }) => {
-      // Set winner for animation
-      const setTrickWinner = useUiStore.getState().setTrickWinner;
-      const setIsAnimatingTrick = useUiStore.getState().setIsAnimatingTrick;
+      // Preserve the trick so it doesn't get cleared by game-state updates
+      preserveTrick();
+      isAnimatingRef.current = true;
 
-      setTrickWinner(winner);
       showToast(`${winner} wins the trick!`, 'info');
 
-      // Start animation after a brief pause to show the cards
+      // Start the trick animation
+      startTrickAnimation(winner);
+
+      // Clear preservation after animation completes (matches animation timing)
       setTimeout(() => {
-        setIsAnimatingTrick(true);
-        // Clear animation state after animation completes
-        setTimeout(() => {
-          setIsAnimatingTrick(false);
-          setTrickWinner(null);
-        }, 800);
-      }, 1000);
+        isAnimatingRef.current = false;
+        clearPreservedTrick();
+      }, 2000);
     });
 
     socket.on('hand-complete', ({ winner }) => {
@@ -151,17 +179,24 @@ export function useSocket() {
       socket.off('hand-complete');
       socket.off('rule-creation-phase');
       socket.off('rule-created');
+      unsubscribeConnection();
+      cleanup();
       disconnectSocket();
     };
   }, []);
 }
 
 /**
- * Hook for sending game actions
+ * Hook for sending game actions with debouncing for rapid selections
  */
 export function useGameActions() {
+  const lastPlayTimeRef = useRef(0);
+  const DEBOUNCE_MS = 300;
+
   const joinLobby = useCallback((playerName: string) => {
     getSocket().emit('join-lobby', { playerName });
+    // Store player name for reconnection
+    storeSession(null, null, playerName);
   }, []);
 
   const createRoom = useCallback((roomName: string) => {
@@ -174,6 +209,7 @@ export function useGameActions() {
 
   const leaveRoom = useCallback(() => {
     getSocket().emit('leave-room');
+    clearSession();
   }, []);
 
   const startGame = useCallback(() => {
@@ -181,6 +217,13 @@ export function useGameActions() {
   }, []);
 
   const playCard = useCallback((card: Card, faceDown: boolean) => {
+    // Debounce rapid card plays
+    const now = Date.now();
+    if (now - lastPlayTimeRef.current < DEBOUNCE_MS) {
+      return;
+    }
+    lastPlayTimeRef.current = now;
+
     getSocket().emit('play-card', { card, faceDown });
   }, []);
 

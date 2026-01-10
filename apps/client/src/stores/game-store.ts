@@ -1,10 +1,12 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import type {
   ClientGameState,
   Card,
   PlayerPosition,
   RuleViolation,
   PlayedCard,
+  TrickState,
 } from '@fkthepope/shared';
 
 interface GameStore {
@@ -20,6 +22,10 @@ interface GameStore {
   // Game state
   gameState: ClientGameState | null;
 
+  // Preserved trick state for animation (prevents race condition)
+  preservedTrick: TrickState | null;
+  isPreservingTrick: boolean;
+
   // UI state
   selectedCard: Card | null;
   lastViolation: RuleViolation | null;
@@ -30,14 +36,17 @@ interface GameStore {
   setPlayerName: (name: string) => void;
   setRoom: (roomId: string | null, position: PlayerPosition | null) => void;
   setGameState: (state: ClientGameState | null) => void;
+  setGameStatePreservingTrick: (state: ClientGameState | null) => void;
   setSelectedCard: (card: Card | null) => void;
   setLastViolation: (violation: RuleViolation | null) => void;
   setWaitingFor: (player: PlayerPosition | null) => void;
   addPlayedCard: (player: PlayerPosition, card: Card, faceDown: boolean) => void;
+  preserveTrick: () => void;
+  clearPreservedTrick: () => void;
   reset: () => void;
 }
 
-export const useGameStore = create<GameStore>((set) => ({
+export const useGameStore = create<GameStore>((set, get) => ({
   // Initial state
   isConnected: false,
   playerId: null,
@@ -45,6 +54,8 @@ export const useGameStore = create<GameStore>((set) => ({
   roomId: null,
   myPosition: null,
   gameState: null,
+  preservedTrick: null,
+  isPreservingTrick: false,
   selectedCard: null,
   lastViolation: null,
   waitingFor: null,
@@ -59,6 +70,31 @@ export const useGameStore = create<GameStore>((set) => ({
     set({ roomId, myPosition: position }),
 
   setGameState: (state) => set({ gameState: state }),
+
+  // Set game state but preserve current trick if we're animating
+  setGameStatePreservingTrick: (state) => {
+    const { isPreservingTrick, preservedTrick } = get();
+
+    if (!state) {
+      set({ gameState: state });
+      return;
+    }
+
+    // If we're preserving the trick, merge the preserved trick into the new state
+    if (isPreservingTrick && preservedTrick && state.currentHand) {
+      set({
+        gameState: {
+          ...state,
+          currentHand: {
+            ...state.currentHand,
+            currentTrick: preservedTrick,
+          },
+        },
+      });
+    } else {
+      set({ gameState: state });
+    }
+  },
 
   setSelectedCard: (card) => set({ selectedCard: card }),
 
@@ -76,32 +112,48 @@ export const useGameStore = create<GameStore>((set) => ({
       // Don't add if already present
       if (currentCards.some((c) => c.playedBy === player)) return state;
 
+      const updatedTrick = {
+        ...state.gameState.currentHand.currentTrick,
+        cards: [...currentCards, newCard],
+      };
+
       return {
         gameState: {
           ...state.gameState,
           currentHand: {
             ...state.gameState.currentHand,
-            currentTrick: {
-              ...state.gameState.currentHand.currentTrick,
-              cards: [...currentCards, newCard],
-            },
+            currentTrick: updatedTrick,
           },
         },
+        // Also update preserved trick if we're preserving
+        preservedTrick: state.isPreservingTrick ? updatedTrick : state.preservedTrick,
       };
     }),
+
+  preserveTrick: () => {
+    const { gameState } = get();
+    const currentTrick = gameState?.currentHand?.currentTrick ?? null;
+    set({ preservedTrick: currentTrick, isPreservingTrick: true });
+  },
+
+  clearPreservedTrick: () => {
+    set({ preservedTrick: null, isPreservingTrick: false });
+  },
 
   reset: () =>
     set({
       roomId: null,
       myPosition: null,
       gameState: null,
+      preservedTrick: null,
+      isPreservingTrick: false,
       selectedCard: null,
       lastViolation: null,
       waitingFor: null,
     }),
 }));
 
-// Derived selectors
+// Memoized selectors using shallow comparison for complex objects
 export const useIsMyTurn = () =>
   useGameStore((state) => {
     if (!state.gameState || !state.myPosition) return false;
@@ -110,22 +162,41 @@ export const useIsMyTurn = () =>
   });
 
 export const useMyHand = () =>
-  useGameStore((state) => state.gameState?.myHand ?? []);
+  useGameStore(useShallow((state) => state.gameState?.myHand ?? []));
 
 export const useLegalMoves = () =>
-  useGameStore((state) => state.gameState?.legalMoves ?? []);
+  useGameStore(useShallow((state) => state.gameState?.legalMoves ?? []));
 
 export const useCurrentTrick = () =>
-  useGameStore((state) => state.gameState?.currentHand?.currentTrick ?? null);
+  useGameStore(useShallow((state) => {
+    // Return preserved trick if we're animating, otherwise current trick
+    if (state.isPreservingTrick && state.preservedTrick) {
+      return state.preservedTrick;
+    }
+    return state.gameState?.currentHand?.currentTrick ?? null;
+  }));
 
 export const useActiveRules = () =>
-  useGameStore((state) => state.gameState?.rules ?? []);
+  useGameStore(useShallow((state) => state.gameState?.rules ?? []));
 
 export const useScores = () =>
-  useGameStore((state) => state.gameState?.scores ?? { north: 0, east: 0, south: 0, west: 0 });
+  useGameStore(
+    useShallow((state) => state.gameState?.scores ?? { north: 0, east: 0, south: 0, west: 0 })
+  );
 
 export const useTrumpSuit = () =>
   useGameStore((state) => state.gameState?.currentHand?.trumpSuit ?? null);
 
 export const useGamePhase = () =>
   useGameStore((state) => state.gameState?.phase ?? 'waiting');
+
+// Selector for connection and room info
+export const useConnectionInfo = () =>
+  useGameStore(
+    useShallow((state) => ({
+      isConnected: state.isConnected,
+      playerId: state.playerId,
+      roomId: state.roomId,
+      myPosition: state.myPosition,
+    }))
+  );

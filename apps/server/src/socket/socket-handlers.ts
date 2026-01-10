@@ -9,6 +9,16 @@ import { toPlayerView } from '@fkthepope/shared';
 import { LobbyManager } from '../lobby/lobby-manager.js';
 import { GameManager } from '../game/game-manager.js';
 import { playerId } from '@fkthepope/game-engine';
+import {
+  validateData,
+  JoinLobbySchema,
+  CreateRoomSchema,
+  JoinRoomSchema,
+  PlayCardSchema,
+  CreateRuleEventSchema,
+  AddBotSchema,
+  RemoveBotSchema,
+} from '../validation/schemas.js';
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
@@ -64,9 +74,15 @@ export function setupSocketHandlers(io: GameServer): void {
 function handleJoinLobby(
   socket: GameSocket,
   io: GameServer,
-  data: { playerName: string }
+  data: unknown
 ): void {
-  socket.data.playerName = data.playerName;
+  const validation = validateData(JoinLobbySchema, data);
+  if (!validation.success) {
+    socket.emit('error', { message: `Invalid data: ${validation.error}`, code: 'VALIDATION_ERROR' });
+    return;
+  }
+
+  socket.data.playerName = validation.data.playerName;
   socket.emit('lobby-state', { rooms: lobbyManager.getRoomList() });
 }
 
@@ -76,9 +92,15 @@ function handleJoinLobby(
 function handleCreateRoom(
   socket: GameSocket,
   io: GameServer,
-  data: { roomName: string }
+  data: unknown
 ): void {
-  const room = lobbyManager.createRoom(data.roomName, socket.id, socket.data.playerName);
+  const validation = validateData(CreateRoomSchema, data);
+  if (!validation.success) {
+    socket.emit('error', { message: `Invalid data: ${validation.error}`, code: 'VALIDATION_ERROR' });
+    return;
+  }
+
+  const room = lobbyManager.createRoom(validation.data.roomName, socket.id, socket.data.playerName);
 
   socket.join(room.id);
   socket.data.roomId = room.id;
@@ -100,13 +122,19 @@ function handleCreateRoom(
 function handleJoinRoom(
   socket: GameSocket,
   io: GameServer,
-  data: { roomId: string; position?: PlayerPosition }
+  data: unknown
 ): void {
+  const validation = validateData(JoinRoomSchema, data);
+  if (!validation.success) {
+    socket.emit('error', { message: `Invalid data: ${validation.error}`, code: 'VALIDATION_ERROR' });
+    return;
+  }
+
   const result = lobbyManager.joinRoom(
-    data.roomId,
+    validation.data.roomId,
     socket.id,
     socket.data.playerName,
-    data.position
+    validation.data.position as PlayerPosition | undefined
   );
 
   if (!result.success) {
@@ -114,19 +142,20 @@ function handleJoinRoom(
     return;
   }
 
-  socket.join(data.roomId);
-  socket.data.roomId = data.roomId;
+  const { roomId } = validation.data;
+  socket.join(roomId);
+  socket.data.roomId = roomId;
   socket.data.position = result.position!;
 
   socket.emit('room-joined', {
-    roomId: data.roomId,
+    roomId,
     position: result.position!,
-    players: getPlayerViews(data.roomId),
+    players: getPlayerViews(roomId),
   });
 
   // Notify other players in room
-  socket.to(data.roomId).emit('room-updated', {
-    players: getPlayerViews(data.roomId),
+  socket.to(roomId).emit('room-updated', {
+    players: getPlayerViews(roomId),
   });
 
   // Broadcast updated room list
@@ -228,8 +257,14 @@ function handleStartGame(socket: GameSocket, io: GameServer): void {
 function handlePlayCard(
   socket: GameSocket,
   io: GameServer,
-  data: { card: { suit: string; rank: string }; faceDown: boolean }
+  data: unknown
 ): void {
+  const validation = validateData(PlayCardSchema, data);
+  if (!validation.success) {
+    socket.emit('error', { message: `Invalid data: ${validation.error}`, code: 'VALIDATION_ERROR' });
+    return;
+  }
+
   const roomId = socket.data.roomId;
   const position = socket.data.position;
 
@@ -244,8 +279,9 @@ function handlePlayCard(
     return;
   }
 
-  const card = { suit: data.card.suit, rank: data.card.rank } as any;
-  const result = gameManager.playCard(position, card, data.faceDown);
+  const { card: cardData, faceDown } = validation.data;
+  const card = { suit: cardData.suit, rank: cardData.rank } as import('@fkthepope/shared').Card;
+  const result = gameManager.playCard(position, card, faceDown);
 
   if (!result.success) {
     socket.emit('play-rejected', {
@@ -263,7 +299,7 @@ function handlePlayCard(
   io.to(roomId).emit('card-played', {
     player: position,
     card,
-    faceDown: data.faceDown,
+    faceDown,
   });
 
   // Handle trick completion
@@ -319,8 +355,14 @@ function handlePlayCard(
 function handleCreateRule(
   socket: GameSocket,
   io: GameServer,
-  data: { rule: any }
+  data: unknown
 ): void {
+  const validation = validateData(CreateRuleEventSchema, data);
+  if (!validation.success) {
+    socket.emit('error', { message: `Invalid rule data: ${validation.error}`, code: 'VALIDATION_ERROR' });
+    return;
+  }
+
   const roomId = socket.data.roomId;
   const position = socket.data.position;
 
@@ -346,7 +388,7 @@ function handleCreateRule(
     return;
   }
 
-  const result = gameManager.addRule(position, data.rule);
+  const result = gameManager.addRule(position, validation.data.rule as any);
 
   if (!result.success) {
     socket.emit('error', { message: result.error!, code: 'INVALID_RULE' });
@@ -384,15 +426,21 @@ function handleCreateRule(
 function handleAddBot(
   socket: GameSocket,
   io: GameServer,
-  data: { position: PlayerPosition }
+  data: unknown
 ): void {
+  const validation = validateData(AddBotSchema, data);
+  if (!validation.success) {
+    socket.emit('error', { message: `Invalid data: ${validation.error}`, code: 'VALIDATION_ERROR' });
+    return;
+  }
+
   const roomId = socket.data.roomId;
   if (!roomId) {
     socket.emit('error', { message: 'Not in a room', code: 'NOT_IN_ROOM' });
     return;
   }
 
-  const result = lobbyManager.addBot(roomId, data.position);
+  const result = lobbyManager.addBot(roomId, validation.data.position as PlayerPosition);
   if (!result.success) {
     socket.emit('error', { message: result.error!, code: 'ADD_BOT_FAILED' });
     return;
@@ -409,15 +457,21 @@ function handleAddBot(
 function handleRemoveBot(
   socket: GameSocket,
   io: GameServer,
-  data: { position: PlayerPosition }
+  data: unknown
 ): void {
+  const validation = validateData(RemoveBotSchema, data);
+  if (!validation.success) {
+    socket.emit('error', { message: `Invalid data: ${validation.error}`, code: 'VALIDATION_ERROR' });
+    return;
+  }
+
   const roomId = socket.data.roomId;
   if (!roomId) {
     socket.emit('error', { message: 'Not in a room', code: 'NOT_IN_ROOM' });
     return;
   }
 
-  if (lobbyManager.removeBot(roomId, data.position)) {
+  if (lobbyManager.removeBot(roomId, validation.data.position as PlayerPosition)) {
     io.to(roomId).emit('room-updated', {
       players: getPlayerViews(roomId),
     });

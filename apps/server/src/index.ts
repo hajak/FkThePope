@@ -22,6 +22,9 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData
     credentials: true,
   },
   transports: ['websocket', 'polling'],
+  // Heartbeat settings for detecting stale connections
+  pingTimeout: 20000,    // How long to wait for pong response
+  pingInterval: 10000,   // How often to send ping
 });
 
 // Health check endpoint
