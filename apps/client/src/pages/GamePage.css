@@ -31,6 +31,20 @@
   font-weight: 600;
 }
 
+.trump-info .trump-suit {
+  font-size: 20px;
+}
+
+.trump-suit.hearts,
+.trump-suit.diamonds {
+  color: #e74c3c;
+}
+
+.trump-suit.clubs,
+.trump-suit.spades {
+  color: #2c3e50;
+}
+
 .table-area {
   flex: 1;
   display: flex;

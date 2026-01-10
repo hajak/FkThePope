@@ -61,6 +61,20 @@ export function GamePage() {
           <span className="label">Trick</span>
           <span className="value">{currentTrick?.trickNumber ?? '-'}/13</span>
         </div>
+        <div className="game-info-item trump-info">
+          <span className="label">Trump</span>
+          <span className={`value trump-suit ${trumpSuit ?? ''}`}>
+            {trumpSuit ? (
+              <>
+                {trumpSuit === 'hearts' && '♥'}
+                {trumpSuit === 'diamonds' && '♦'}
+                {trumpSuit === 'clubs' && '♣'}
+                {trumpSuit === 'spades' && '♠'}
+                {' '}{trumpSuit}
+              </>
+            ) : '-'}
+          </span>
+        </div>
         <div className="game-info-item">
           <span className="label">Phase</span>
           <span className="value">{gameState.phase}</span>

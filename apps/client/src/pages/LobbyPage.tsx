@@ -1,13 +1,26 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useGameStore } from '../stores/game-store';
 import { useLobbyStore } from '../stores/lobby-store';
 import { useGameActions } from '../socket/use-socket';
 import type { PlayerPosition } from '@fkthepope/shared';
 import './LobbyPage.css';
 
+// Word lists for random room names
+const adjectives = ['Swift', 'Bold', 'Clever', 'Mighty', 'Noble', 'Royal', 'Lucky', 'Wild', 'Bright', 'Grand', 'Silent', 'Golden', 'Silver', 'Hidden', 'Ancient'];
+const nouns = ['Kings', 'Queens', 'Knights', 'Dragons', 'Wizards', 'Ravens', 'Wolves', 'Eagles', 'Lions', 'Tigers', 'Phoenix', 'Foxes', 'Owls', 'Bears', 'Hawks'];
+const places = ['Table', 'Court', 'Tower', 'Hall', 'Chamber', 'Den', 'Throne', 'Castle', 'Palace', 'Arena', 'Garden', 'Lodge', 'Keep', 'Lair', 'Sanctum'];
+
+function generateRoomName(): string {
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const place = places[Math.floor(Math.random() * places.length)];
+  return `${adj} ${noun} ${place}`;
+}
+
 export function LobbyPage() {
   const [playerName, setPlayerName] = useState('');
-  const [roomName, setRoomName] = useState('');
+  const initialRoomName = useMemo(() => generateRoomName(), []);
+  const [roomName, setRoomName] = useState(initialRoomName);
   const [hasJoinedLobby, setHasJoinedLobby] = useState(false);
 
   const isConnected = useGameStore((s) => s.isConnected);
@@ -30,7 +43,7 @@ export function LobbyPage() {
   const handleCreateRoom = () => {
     if (roomName.trim()) {
       createRoom(roomName);
-      setRoomName('');
+      setRoomName(generateRoomName());
     }
   };
 

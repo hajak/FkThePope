@@ -217,6 +217,9 @@ function handleStartGame(socket: GameSocket, io: GameServer): void {
 
   // Update lobby
   io.emit('lobby-state', { rooms: lobbyManager.getRoomList() });
+
+  // Process bot turns if the first player is a bot
+  processBotTurns(io, roomId, gameManager);
 }
 
 /**
