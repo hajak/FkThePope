@@ -1,0 +1,35 @@
+.trick-pile {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trick-card {
+  position: absolute;
+  transition: transform 0.3s ease;
+}
+
+.trick-card.winner {
+  z-index: 10;
+}
+
+.trick-card.winner::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--color-success);
+  border-radius: calc(var(--card-radius) + 4px);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

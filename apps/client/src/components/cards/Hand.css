@@ -1,0 +1,23 @@
+.hand {
+  display: flex;
+  justify-content: center;
+  padding: 10px;
+  perspective: 1000px;
+}
+
+.hand-card {
+  margin-left: -30px;
+  transition: margin 0.2s ease;
+}
+
+.hand-card:first-child {
+  margin-left: 0;
+}
+
+.hand:hover .hand-card {
+  margin-left: -20px;
+}
+
+.hand:hover .hand-card:first-child {
+  margin-left: 0;
+}
