@@ -28,7 +28,8 @@ export function GameTable({
   ];
 
   const getRelativePosition = (index: number): string => {
-    const positions = ['bottom', 'right', 'top', 'left'];
+    // Clockwise from player: me (bottom), left, across (top), right
+    const positions = ['bottom', 'left', 'top', 'right'];
     return positions[index] ?? 'bottom';
   };
 
