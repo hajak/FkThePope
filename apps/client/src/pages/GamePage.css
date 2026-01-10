@@ -62,9 +62,22 @@
   gap: 16px;
 }
 
+.play-actions-container {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .play-actions {
   display: flex;
   gap: 12px;
+}
+
+.play-actions-placeholder {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  padding: 8px 16px;
 }
 
 .waiting-message {

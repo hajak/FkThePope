@@ -88,31 +88,35 @@ export function GamePage() {
           isMyTurn={isMyTurn}
         />
 
-        {/* Play buttons */}
-        {selectedCard && isMyTurn && (
-          <div className="play-actions">
-            <button
-              className="btn-primary"
-              onClick={() => handlePlayCard(false)}
-            >
-              Play Card
-            </button>
-            {canPlayFaceDown() && (
+        {/* Play buttons - always reserve space */}
+        <div className="play-actions-container">
+          {selectedCard && isMyTurn ? (
+            <div className="play-actions">
               <button
-                className="btn-secondary"
-                onClick={() => handlePlayCard(true)}
+                className="btn-primary"
+                onClick={() => handlePlayCard(false)}
               >
-                Discard (Face Down)
+                Play Card
               </button>
-            )}
-          </div>
-        )}
-
-        {!isMyTurn && (
-          <div className="waiting-message">
-            Waiting for {waitingFor}...
-          </div>
-        )}
+              {canPlayFaceDown() && (
+                <button
+                  className="btn-secondary"
+                  onClick={() => handlePlayCard(true)}
+                >
+                  Discard (Face Down)
+                </button>
+              )}
+            </div>
+          ) : !isMyTurn ? (
+            <div className="waiting-message">
+              Waiting for {waitingFor}...
+            </div>
+          ) : (
+            <div className="play-actions-placeholder">
+              Select a card to play
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Rules panel */}

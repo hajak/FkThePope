@@ -90,7 +90,22 @@ export function useSocket() {
     });
 
     socket.on('trick-complete', ({ winner }) => {
+      // Set winner for animation
+      const setTrickWinner = useUiStore.getState().setTrickWinner;
+      const setIsAnimatingTrick = useUiStore.getState().setIsAnimatingTrick;
+
+      setTrickWinner(winner);
       showToast(`${winner} wins the trick!`, 'info');
+
+      // Start animation after a brief pause to show the cards
+      setTimeout(() => {
+        setIsAnimatingTrick(true);
+        // Clear animation state after animation completes
+        setTimeout(() => {
+          setIsAnimatingTrick(false);
+          setTrickWinner(null);
+        }, 800);
+      }, 1000);
     });
 
     socket.on('hand-complete', ({ winner }) => {

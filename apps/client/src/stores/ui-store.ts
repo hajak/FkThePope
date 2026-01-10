@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { PlayerPosition } from '@fkthepope/shared';
 
 interface UiStore {
   // Modal states
@@ -10,12 +11,18 @@ interface UiStore {
   toastMessage: string | null;
   toastType: 'info' | 'success' | 'error' | 'warning';
 
+  // Trick animation
+  trickWinner: PlayerPosition | null;
+  isAnimatingTrick: boolean;
+
   // Actions
   setShowRuleCreator: (show: boolean) => void;
   setShowDevTools: (show: boolean) => void;
   setShowRulesPanel: (show: boolean) => void;
   showToast: (message: string, type?: 'info' | 'success' | 'error' | 'warning') => void;
   hideToast: () => void;
+  setTrickWinner: (winner: PlayerPosition | null) => void;
+  setIsAnimatingTrick: (animating: boolean) => void;
 }
 
 export const useUiStore = create<UiStore>((set) => ({
@@ -25,6 +32,8 @@ export const useUiStore = create<UiStore>((set) => ({
   showRulesPanel: true,
   toastMessage: null,
   toastType: 'info',
+  trickWinner: null,
+  isAnimatingTrick: false,
 
   // Actions
   setShowRuleCreator: (show) => set({ showRuleCreator: show }),
@@ -40,4 +49,7 @@ export const useUiStore = create<UiStore>((set) => ({
   },
 
   hideToast: () => set({ toastMessage: null }),
+
+  setTrickWinner: (winner) => set({ trickWinner: winner }),
+  setIsAnimatingTrick: (animating) => set({ isAnimatingTrick: animating }),
 }));

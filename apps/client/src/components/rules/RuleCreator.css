@@ -14,7 +14,7 @@
   border-radius: 12px;
   padding: 32px;
   width: 100%;
-  max-width: 600px;
+  max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
 }
@@ -28,75 +28,66 @@
   margin-bottom: 24px;
 }
 
-.template-section {
+.rule-section {
   margin-bottom: 24px;
 }
 
-.template-section h3 {
+.rule-section h3 {
   font-size: 14px;
   text-transform: uppercase;
   color: var(--color-text-muted);
   margin-bottom: 12px;
 }
 
-.templates {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px;
+.rule-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.template-card {
+.rule-select {
+  padding: 10px 14px;
+  font-size: 14px;
+  background: var(--color-primary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: var(--color-text);
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.rule-select:hover {
+  border-color: var(--color-accent);
+}
+
+.rule-select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.rule-preview {
   background: var(--color-primary);
   border-radius: 8px;
-  padding: 12px;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.2s ease;
-}
-
-.template-card:hover {
-  border-color: var(--color-accent);
-}
-
-.template-card.selected {
-  border-color: var(--color-accent);
-  background: rgba(233, 69, 96, 0.2);
-}
-
-.template-name {
-  font-weight: 600;
-  font-size: 14px;
-  margin-bottom: 4px;
-}
-
-.template-desc {
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-
-.form-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  padding: 16px;
   margin-bottom: 24px;
 }
 
-.form-section label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.preview-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+
+.preview-name {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.preview-desc {
   font-size: 14px;
   color: var(--color-text-muted);
-}
-
-.form-section input,
-.form-section textarea {
-  font-size: 14px;
-}
-
-.form-section textarea {
-  resize: vertical;
-  min-height: 80px;
 }
 
 .actions {

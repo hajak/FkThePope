@@ -1,14 +1,13 @@
 import type { PlayerPosition, PlayerView, TrickState, Suit } from '@fkthepope/shared';
 import { TrickPile } from '../cards/TrickPile';
 import { CardBack } from '../cards/Card';
-import { SUIT_SYMBOLS, SUIT_NAMES } from '@fkthepope/shared';
 import './GameTable.css';
 
 interface GameTableProps {
   players: Record<PlayerPosition, PlayerView | null>;
   currentTrick: TrickState | null;
   myPosition: PlayerPosition;
-  trumpSuit: Suit | null;
+  trumpSuit: Suit | null; // Kept for potential future use
   waitingFor: PlayerPosition | null;
 }
 
@@ -18,7 +17,7 @@ export function GameTable({
   players,
   currentTrick,
   myPosition,
-  trumpSuit,
+  trumpSuit: _trumpSuit,
   waitingFor,
 }: GameTableProps) {
   // Rotate seats so myPosition is always at bottom
@@ -35,16 +34,6 @@ export function GameTable({
 
   return (
     <div className="game-table">
-      {/* Trump indicator */}
-      {trumpSuit && (
-        <div className="trump-indicator">
-          <span className="trump-label">Trump</span>
-          <span className={`trump-suit suit-${trumpSuit}`}>
-            {SUIT_SYMBOLS[trumpSuit]} {SUIT_NAMES[trumpSuit]}
-          </span>
-        </div>
-      )}
-
       {/* Center trick area */}
       <div className="table-center">
         {currentTrick && (
