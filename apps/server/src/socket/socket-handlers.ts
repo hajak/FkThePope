@@ -301,10 +301,11 @@ function handlePlayCard(
     }
 
     // Add delay before clearing trick and continuing
+    // Wait 2.5s to ensure all clients see the 4th card and animation completes
     setTimeout(() => {
       broadcastGameState(io, roomId, gameManager);
       processBotTurns(io, roomId, gameManager);
-    }, 1500);
+    }, 2500);
   } else {
     // No trick complete - broadcast immediately
     broadcastGameState(io, roomId, gameManager);

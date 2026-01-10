@@ -40,14 +40,6 @@ export function GamePage() {
     }
   };
 
-  // Check if selected card can be played face down
-  const canPlayFaceDown = () => {
-    if (!selectedCard) return false;
-    const move = legalMoves.find(
-      (m) => m.card.suit === selectedCard.suit && m.card.rank === selectedCard.rank
-    );
-    return move?.canPlayFaceDown ?? false;
-  };
 
   return (
     <div className="game-page">
@@ -96,16 +88,8 @@ export function GamePage() {
                 className="btn-primary"
                 onClick={() => handlePlayCard(false)}
               >
-                Play Card
+                Play
               </button>
-              {canPlayFaceDown() && (
-                <button
-                  className="btn-secondary"
-                  onClick={() => handlePlayCard(true)}
-                >
-                  Discard (Face Down)
-                </button>
-              )}
             </div>
           ) : !isMyTurn ? (
             <div className="waiting-message">

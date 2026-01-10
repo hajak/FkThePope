@@ -49,7 +49,9 @@ function selectRandomTrump(seed?: number): Suit {
     const index = Math.abs(seed * 2654435761) % 4;
     return SUITS[index]!;
   }
-  return SUITS[Math.floor(Math.random() * 4)]!;
+  // Use current time + random for better entropy
+  const randomIndex = Math.floor((Math.random() * Date.now()) % 4);
+  return SUITS[randomIndex]!;
 }
 
 /**

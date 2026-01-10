@@ -4,6 +4,7 @@ import type {
   Card,
   PlayerPosition,
   RuleViolation,
+  PlayedCard,
 } from '@fkthepope/shared';
 
 interface GameStore {
@@ -32,6 +33,7 @@ interface GameStore {
   setSelectedCard: (card: Card | null) => void;
   setLastViolation: (violation: RuleViolation | null) => void;
   setWaitingFor: (player: PlayerPosition | null) => void;
+  addPlayedCard: (player: PlayerPosition, card: Card, faceDown: boolean) => void;
   reset: () => void;
 }
 
@@ -63,6 +65,30 @@ export const useGameStore = create<GameStore>((set) => ({
   setLastViolation: (violation) => set({ lastViolation: violation }),
 
   setWaitingFor: (player) => set({ waitingFor: player }),
+
+  addPlayedCard: (player, card, faceDown) =>
+    set((state) => {
+      if (!state.gameState?.currentHand?.currentTrick) return state;
+
+      const newCard: PlayedCard = { card, playedBy: player, faceDown, playedAt: Date.now() };
+      const currentCards = state.gameState.currentHand.currentTrick.cards;
+
+      // Don't add if already present
+      if (currentCards.some((c) => c.playedBy === player)) return state;
+
+      return {
+        gameState: {
+          ...state.gameState,
+          currentHand: {
+            ...state.gameState.currentHand,
+            currentTrick: {
+              ...state.gameState.currentHand.currentTrick,
+              cards: [...currentCards, newCard],
+            },
+          },
+        },
+      };
+    }),
 
   reset: () =>
     set({

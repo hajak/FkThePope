@@ -80,8 +80,10 @@ export function useSocket() {
       setWaitingFor(player);
     });
 
-    socket.on('card-played', () => {
-      // State update happens via game-state event
+    socket.on('card-played', ({ player, card, faceDown }) => {
+      // Add card to trick immediately so it shows before game-state update
+      const addPlayedCard = useGameStore.getState().addPlayedCard;
+      addPlayedCard(player, card, faceDown);
     });
 
     socket.on('play-rejected', ({ violation }) => {
