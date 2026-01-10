@@ -275,7 +275,6 @@ function handlePlayCard(
 
     // Handle hand completion
     if (result.handComplete) {
-      const scores = gameManager.getServerState().scores;
       io.to(roomId).emit('hand-complete', {
         winner: result.handWinner!,
         tricks: Object.fromEntries(
@@ -285,16 +284,30 @@ function handlePlayCard(
         ) as any,
       });
 
-      // Enter rule creation phase
-      io.to(roomId).emit('rule-creation-phase', { winner: result.handWinner! });
+      // Check if winner is a bot - auto-start next hand
+      const room = lobbyManager.getRoom(roomId);
+      const winnerPlayer = room?.players.get(result.handWinner!);
+
+      if (winnerPlayer?.isBot) {
+        // Bot wins - skip rule creation and start next hand after delay
+        setTimeout(() => {
+          startNextHandAfterBot(io, roomId, gameManager);
+        }, 2000);
+      } else {
+        // Human wins - enter rule creation phase
+        io.to(roomId).emit('rule-creation-phase', { winner: result.handWinner! });
+      }
+      return; // Don't process bot turns or broadcast state yet
     }
-  }
 
-  // Broadcast updated state and whose turn
-  broadcastGameState(io, roomId, gameManager);
-
-  // Handle bot turns
-  if (!result.handComplete) {
+    // Add delay before clearing trick and continuing
+    setTimeout(() => {
+      broadcastGameState(io, roomId, gameManager);
+      processBotTurns(io, roomId, gameManager);
+    }, 1500);
+  } else {
+    // No trick complete - broadcast immediately
+    broadcastGameState(io, roomId, gameManager);
     processBotTurns(io, roomId, gameManager);
   }
 }
@@ -429,6 +442,40 @@ function handleDevReset(socket: GameSocket, io: GameServer): void {
 }
 
 /**
+ * Start next hand after bot wins (skipping rule creation)
+ */
+function startNextHandAfterBot(
+  io: GameServer,
+  roomId: string,
+  gameManager: GameManager
+): void {
+  const room = lobbyManager.getRoom(roomId);
+  if (!room) return;
+
+  // Start next hand
+  gameManager.startNextHand();
+  const { trumpSuit, hands } = gameManager.startHand();
+
+  // Send hand-started to human players
+  for (const [pos, player] of room.players) {
+    if (!player.isBot) {
+      const playerSocket = io.sockets.sockets.get(player.socketId);
+      if (playerSocket) {
+        playerSocket.emit('hand-started', {
+          handNumber: gameManager.getServerState().currentHand?.number ?? 1,
+          trumpSuit,
+          yourHand: hands[pos],
+        });
+      }
+    }
+  }
+
+  broadcastGameState(io, roomId, gameManager);
+  broadcastTurn(io, roomId, gameManager);
+  processBotTurns(io, roomId, gameManager);
+}
+
+/**
  * Process bot turns automatically
  */
 async function processBotTurns(
@@ -468,13 +515,26 @@ async function processBotTurns(
         trickNumber: gameManager.getServerState().currentHand?.tricksPlayed ?? 0,
       });
 
+      // Add delay to show the completed trick
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
       if (result.handComplete) {
         io.to(roomId).emit('hand-complete', {
           winner: result.handWinner!,
           tricks: {} as any,
         });
-        io.to(roomId).emit('rule-creation-phase', { winner: result.handWinner! });
-        break;
+
+        // Check if winner is a bot
+        const winnerPlayer = room.players.get(result.handWinner!);
+        if (winnerPlayer?.isBot) {
+          // Bot wins - skip rule creation, start next hand after delay
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          startNextHandAfterBot(io, roomId, gameManager);
+        } else {
+          // Human wins - enter rule creation phase
+          io.to(roomId).emit('rule-creation-phase', { winner: result.handWinner! });
+        }
+        return;
       }
     }
 

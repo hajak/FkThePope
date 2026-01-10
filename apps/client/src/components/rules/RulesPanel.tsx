@@ -1,10 +1,18 @@
 import type { Rule } from '@fkthepope/shared';
-import { useActiveRules } from '../../stores/game-store';
+import { useActiveRules, useTrumpSuit } from '../../stores/game-store';
 import { useUiStore } from '../../stores/ui-store';
 import './RulesPanel.css';
 
+const suitSymbols: Record<string, string> = {
+  hearts: '♥',
+  diamonds: '♦',
+  clubs: '♣',
+  spades: '♠',
+};
+
 export function RulesPanel() {
   const rules = useActiveRules();
+  const trumpSuit = useTrumpSuit();
   const showPanel = useUiStore((s) => s.showRulesPanel);
   const setShowPanel = useUiStore((s) => s.setShowRulesPanel);
 
@@ -31,7 +39,22 @@ export function RulesPanel() {
         </button>
       </div>
 
+      {/* Trump suit display */}
+      {trumpSuit && (
+        <div className={`trump-display ${trumpSuit}`}>
+          <span className="trump-label">Trump Suit</span>
+          <span className="trump-value">
+            {suitSymbols[trumpSuit]} {trumpSuit}
+          </span>
+        </div>
+      )}
+
       <div className="rules-list">
+        <div className="base-rule">
+          <div className="rule-name">Follow Suit</div>
+          <div className="rule-description">Must follow the lead suit if able</div>
+        </div>
+
         {rules.length === 0 ? (
           <p className="no-rules">No custom rules yet.</p>
         ) : (
