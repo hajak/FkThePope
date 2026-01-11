@@ -14,9 +14,9 @@
   --color-clubs: #1a1a2e;
   --color-spades: #1a1a2e;
 
-  --card-width: 80px;
-  --card-height: 112px;
-  --card-radius: 8px;
+  --card-width: 120px;
+  --card-height: 168px;
+  --card-radius: 12px;
 }
 
 * {

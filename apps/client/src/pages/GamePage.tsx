@@ -1,11 +1,11 @@
+import { useEffect, useMemo } from 'react';
 import { useGameStore, useMyHand, useLegalMoves, useIsMyTurn, useTrumpSuit, useCurrentTrick } from '../stores/game-store';
 import { useGameActions } from '../socket/use-socket';
+import { useVideoStore } from '../stores/video-store';
 import { GameTable } from '../components/layout/GameTable';
 import { Hand } from '../components/cards/Hand';
-import { RulesPanel } from '../components/rules/RulesPanel';
-import { RuleCreator } from '../components/rules/RuleCreator';
-import { useUiStore } from '../stores/ui-store';
-import type { Card } from '@fkthepope/shared';
+import { HandResultModal } from '../components/modals/HandResultModal';
+import type { Card, PlayerPosition } from '@fkthepope/shared';
 import './GamePage.css';
 
 export function GamePage() {
@@ -21,9 +21,42 @@ export function GamePage() {
   const trumpSuit = useTrumpSuit();
   const currentTrick = useCurrentTrick();
 
-  const showRuleCreator = useUiStore((s) => s.showRuleCreator);
-
   const { playCard } = useGameActions();
+
+  // Video state
+  const localStream = useVideoStore((s) => s.localStream);
+  const remoteStreams = useVideoStore((s) => s.remoteStreams);
+  const isVideoEnabled = useVideoStore((s) => s.isVideoEnabled);
+  const isAudioEnabled = useVideoStore((s) => s.isAudioEnabled);
+  const playerMuteStatus = useVideoStore((s) => s.playerMuteStatus);
+  const startVideo = useVideoStore((s) => s.startVideo);
+  const stopVideo = useVideoStore((s) => s.stopVideo);
+  const toggleVideo = useVideoStore((s) => s.toggleVideo);
+  const toggleAudio = useVideoStore((s) => s.toggleAudio);
+  const sendOffer = useVideoStore((s) => s.sendOffer);
+
+  // Combine local stream with remote streams for display
+  const videoStreams = useMemo(() => {
+    const streams: Record<PlayerPosition, MediaStream | null> = {
+      ...remoteStreams,
+    };
+    if (myPosition) {
+      streams[myPosition] = localStream;
+    }
+    return streams;
+  }, [localStream, remoteStreams, myPosition]);
+
+  // Start video calls when we have local stream and other players
+  useEffect(() => {
+    if (localStream && myPosition && gameState) {
+      const positions: PlayerPosition[] = ['north', 'east', 'south', 'west'];
+      positions.forEach(pos => {
+        if (pos !== myPosition && gameState.players[pos] && !gameState.players[pos]?.isBot) {
+          sendOffer(pos);
+        }
+      });
+    }
+  }, [localStream, myPosition, gameState, sendOffer]);
 
   if (!gameState || !myPosition) {
     return <div className="game-page">Loading...</div>;
@@ -43,21 +76,37 @@ export function GamePage() {
 
   return (
     <div className="game-page">
-      {/* Game info bar */}
-      <div className="game-info-bar">
-        <div className="game-info-item">
-          <span className="label">Hand</span>
-          <span className="value">{gameState.currentHand?.number ?? '-'}</span>
+      {/* Game header */}
+      <header className="game-header">
+        <div className="game-logo">
+          <span className="logo-cards">
+            <span className="logo-card red">A</span>
+            <span className="logo-card black">A</span>
+          </span>
+          <h1>Whist Online</h1>
         </div>
-        <div className="game-info-item">
-          <span className="label">Trick</span>
-          <span className="value">{currentTrick?.trickNumber ?? '-'}/13</span>
+        <div className="game-stats">
+          <div className="stat-group">
+            <span className="stat-label">Hand {gameState.currentHand?.number ?? '-'}</span>
+            <span className="stat-divider">|</span>
+            <span className="stat-label">Trick {currentTrick?.trickNumber ?? '-'}/13</span>
+          </div>
+          {trumpSuit && (
+            <div className="trump-badge">
+              <span className={`trump-icon suit-${trumpSuit}`}>
+                {trumpSuit === 'hearts' ? '♥' : trumpSuit === 'diamonds' ? '♦' : trumpSuit === 'clubs' ? '♣' : '♠'}
+              </span>
+              <span className={`trump-name suit-${trumpSuit}`}>
+                {trumpSuit.charAt(0).toUpperCase() + trumpSuit.slice(1)}
+              </span>
+            </div>
+          )}
+          <div className="score-display">
+            <span className="score-label">Score</span>
+            <span className="score-value">{gameState.scores[myPosition] ?? 0}</span>
+          </div>
         </div>
-        <div className="game-info-item">
-          <span className="label">Phase</span>
-          <span className="value">{gameState.phase}</span>
-        </div>
-      </div>
+      </header>
 
       {/* Main table area */}
       <div className="table-area">
@@ -67,7 +116,47 @@ export function GamePage() {
           myPosition={myPosition}
           trumpSuit={trumpSuit}
           waitingFor={waitingFor}
+          videoStreams={videoStreams}
+          playerMuteStatus={playerMuteStatus}
+          isLocalMuted={!isAudioEnabled}
         />
+      </div>
+
+      {/* Video controls */}
+      <div className="video-controls">
+        {localStream ? (
+          <>
+            <button
+              className={`btn-secondary video-btn ${!isVideoEnabled ? 'off' : ''}`}
+              onClick={toggleVideo}
+              title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
+            >
+              {isVideoEnabled ? '📹' : '📷'}
+            </button>
+            <button
+              className={`btn-secondary video-btn ${!isAudioEnabled ? 'off' : ''}`}
+              onClick={toggleAudio}
+              title={isAudioEnabled ? 'Mute' : 'Unmute'}
+            >
+              {isAudioEnabled ? '🎤' : '🔇'}
+            </button>
+            <button
+              className="btn-secondary video-btn stop"
+              onClick={stopVideo}
+              title="Stop video call"
+            >
+              End
+            </button>
+          </>
+        ) : (
+          <button
+            className="btn-primary video-btn start"
+            onClick={startVideo}
+            title="Start video call"
+          >
+            Start Video
+          </button>
+        )}
       </div>
 
       {/* Player hand */}
@@ -103,11 +192,8 @@ export function GamePage() {
         </div>
       </div>
 
-      {/* Rules panel */}
-      <RulesPanel />
-
-      {/* Rule creator modal */}
-      {showRuleCreator && <RuleCreator />}
+      {/* Hand result modal */}
+      <HandResultModal />
     </div>
   );
 }

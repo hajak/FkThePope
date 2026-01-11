@@ -9,7 +9,7 @@ interface CardProps {
   disabled?: boolean;
   onClick?: () => void;
   onKeyDown?: (e: React.KeyboardEvent) => void;
-  size?: 'small' | 'medium' | 'large';
+  size?: 'mini' | 'small' | 'medium' | 'large';
   tabIndex?: number;
 }
 
@@ -81,7 +81,7 @@ export function Card({
 }
 
 interface CardBackProps {
-  size?: 'small' | 'medium' | 'large';
+  size?: 'mini' | 'small' | 'medium' | 'large';
 }
 
 export function CardBack({ size = 'medium' }: CardBackProps) {

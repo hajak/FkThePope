@@ -1,9 +1,10 @@
 import { useEffect, useCallback, useRef } from 'react';
-import type { Card, PlayerPosition, Rule } from '@fkthepope/shared';
+import type { Card, PlayerPosition } from '@fkthepope/shared';
 import { getSocket, connectSocket, disconnectSocket, onConnectionChange, storeSession, clearSession } from './socket-client';
 import { useGameStore } from '../stores/game-store';
 import { useLobbyStore } from '../stores/lobby-store';
 import { useUiStore } from '../stores/ui-store';
+import { useVideoStore } from '../stores/video-store';
 
 /**
  * Main socket hook - sets up all event listeners
@@ -24,9 +25,10 @@ export function useSocket() {
   const updateRoomPlayers = useLobbyStore((s) => s.updateRoomPlayers);
 
   const showToast = useUiStore((s) => s.showToast);
-  const setShowRuleCreator = useUiStore((s) => s.setShowRuleCreator);
   const setConnectionState = useUiStore((s) => s.setConnectionState);
   const startTrickAnimation = useUiStore((s) => s.startTrickAnimation);
+  const clearTrickComplete = useUiStore((s) => s.clearTrickComplete);
+  const setHandResult = useUiStore((s) => s.setHandResult);
   const cleanup = useUiStore((s) => s.cleanup);
 
   // Track if we're in trick animation to preserve cards
@@ -65,9 +67,9 @@ export function useSocket() {
       setRooms(rooms);
     });
 
-    socket.on('room-joined', ({ roomId, position, players }) => {
+    socket.on('room-joined', ({ roomId, roomName, position, players }) => {
       setRoom(roomId, position);
-      setCurrentRoom({ id: roomId, players });
+      setCurrentRoom({ id: roomId, name: roomName, players });
       // Store session for reconnection
       const playerName = useGameStore.getState().playerName;
       storeSession(roomId, position, playerName);
@@ -85,6 +87,8 @@ export function useSocket() {
 
     // Game events
     socket.on('game-started', ({ gameState }) => {
+      // Clear any animation state when game starts
+      clearTrickComplete();
       setGameState(gameState);
       showToast('Game started!', 'success');
     });
@@ -99,6 +103,10 @@ export function useSocket() {
     });
 
     socket.on('hand-started', ({ handNumber, trumpSuit }) => {
+      // Clear any lingering animation state from previous hand
+      clearTrickComplete();
+      clearPreservedTrick();
+      isAnimatingRef.current = false;
       showToast(`Hand ${handNumber} started. Trump: ${trumpSuit}`, 'info');
     });
 
@@ -111,6 +119,13 @@ export function useSocket() {
     });
 
     socket.on('card-played', ({ player, card, faceDown }) => {
+      // Clear trickComplete flag when a new card is played
+      // This makes cards visible again for the new trick
+      const trickComplete = useUiStore.getState().trickComplete;
+      if (trickComplete) {
+        clearTrickComplete();
+      }
+
       // Add card to trick immediately so it shows before game-state update
       const addPlayedCard = useGameStore.getState().addPlayedCard;
       addPlayedCard(player, card, faceDown);
@@ -138,23 +153,26 @@ export function useSocket() {
       }, 2000);
     });
 
-    socket.on('hand-complete', ({ winner }) => {
-      showToast(`${winner} wins the hand!`, 'success');
+    socket.on('hand-complete', ({ winner, tricks }) => {
+      setHandResult({ winner, tricks });
     });
 
-    socket.on('rule-creation-phase', ({ winner }) => {
-      const myPosition = useGameStore.getState().myPosition;
-      if (winner === myPosition) {
-        setShowRuleCreator(true);
-        showToast('You won! Create a new rule.', 'success');
-      } else {
-        showToast(`${winner} is creating a rule...`, 'info');
-      }
+    // WebRTC signaling events
+    socket.on('webrtc-offer', async ({ from, offer }) => {
+      await useVideoStore.getState().handleOffer(from, offer);
     });
 
-    socket.on('rule-created', ({ rule }) => {
-      setShowRuleCreator(false);
-      showToast(`New rule: ${rule.name}`, 'info');
+    socket.on('webrtc-answer', async ({ from, answer }) => {
+      await useVideoStore.getState().handleAnswer(from, answer);
+    });
+
+    socket.on('webrtc-ice-candidate', async ({ from, candidate }) => {
+      await useVideoStore.getState().handleIceCandidate(from, candidate);
+    });
+
+    // Player mute status
+    socket.on('player-mute-status', ({ player, isMuted }) => {
+      useVideoStore.getState().setPlayerMuteStatus(player, isMuted);
     });
 
     // Connect
@@ -177,10 +195,13 @@ export function useSocket() {
       socket.off('play-rejected');
       socket.off('trick-complete');
       socket.off('hand-complete');
-      socket.off('rule-creation-phase');
-      socket.off('rule-created');
+      socket.off('webrtc-offer');
+      socket.off('webrtc-answer');
+      socket.off('webrtc-ice-candidate');
+      socket.off('player-mute-status');
       unsubscribeConnection();
       cleanup();
+      useVideoStore.getState().cleanup();
       disconnectSocket();
     };
   }, []);
@@ -227,16 +248,16 @@ export function useGameActions() {
     getSocket().emit('play-card', { card, faceDown });
   }, []);
 
-  const createRule = useCallback((rule: Omit<Rule, 'id' | 'createdBy' | 'createdAtHand' | 'createdAt' | 'isActive'>) => {
-    getSocket().emit('create-rule', { rule });
-  }, []);
-
   const addBot = useCallback((position: PlayerPosition) => {
     getSocket().emit('add-bot', { position });
   }, []);
 
   const removeBot = useCallback((position: PlayerPosition) => {
     getSocket().emit('remove-bot', { position });
+  }, []);
+
+  const continueGame = useCallback(() => {
+    getSocket().emit('continue-game');
   }, []);
 
   return {
@@ -246,8 +267,8 @@ export function useGameActions() {
     leaveRoom,
     startGame,
     playCard,
-    createRule,
     addBot,
     removeBot,
+    continueGame,
   };
 }

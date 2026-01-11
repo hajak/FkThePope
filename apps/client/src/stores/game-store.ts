@@ -157,8 +157,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 export const useIsMyTurn = () =>
   useGameStore((state) => {
     if (!state.gameState || !state.myPosition) return false;
-    const currentTrick = state.gameState.currentHand?.currentTrick;
-    return currentTrick?.currentPlayer === state.myPosition;
+    // Use waitingFor from server's waiting-for event - more reliable than currentTrick.currentPlayer
+    // because it updates immediately when turn changes, before game-state arrives
+    return state.waitingFor === state.myPosition;
   });
 
 export const useMyHand = () =>

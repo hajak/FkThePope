@@ -8,12 +8,13 @@ interface LobbyStore {
   // Current room
   currentRoom: {
     id: string;
+    name: string;
     players: Array<PlayerView | null>;
   } | null;
 
   // Actions
   setRooms: (rooms: RoomInfo[]) => void;
-  setCurrentRoom: (room: { id: string; players: Array<PlayerView | null> } | null) => void;
+  setCurrentRoom: (room: { id: string; name: string; players: Array<PlayerView | null> } | null) => void;
   updateRoomPlayers: (players: Array<PlayerView | null>) => void;
 }
 

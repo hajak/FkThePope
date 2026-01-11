@@ -3,6 +3,7 @@
   justify-content: center;
   padding: 10px;
   perspective: 1000px;
+  min-height: 180px; /* Prevent layout shift when hand is empty */
 }
 
 .hand-card {

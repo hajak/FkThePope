@@ -16,6 +16,12 @@ interface UiStore {
   showDevTools: boolean;
   showRulesPanel: boolean;
 
+  // Hand result modal
+  handResult: {
+    winner: PlayerPosition;
+    tricks: Record<PlayerPosition, number>;
+  } | null;
+
   // Toast messages
   toastMessage: string | null;
   toastType: 'info' | 'success' | 'error' | 'warning';
@@ -24,6 +30,7 @@ interface UiStore {
   // Trick animation
   trickWinner: PlayerPosition | null;
   isAnimatingTrick: boolean;
+  trickComplete: boolean; // True when animation finished, keeps cards hidden until new trick
   trickAnimationTimeoutId: ReturnType<typeof setTimeout> | null;
 
   // Actions
@@ -32,11 +39,13 @@ interface UiStore {
   setShowRuleCreator: (show: boolean) => void;
   setShowDevTools: (show: boolean) => void;
   setShowRulesPanel: (show: boolean) => void;
+  setHandResult: (result: { winner: PlayerPosition; tricks: Record<PlayerPosition, number> } | null) => void;
   showToast: (message: string, type?: 'info' | 'success' | 'error' | 'warning') => void;
   hideToast: () => void;
   setTrickWinner: (winner: PlayerPosition | null) => void;
   setIsAnimatingTrick: (animating: boolean) => void;
   startTrickAnimation: (winner: PlayerPosition) => void;
+  clearTrickComplete: () => void;
   cleanup: () => void;
 }
 
@@ -50,11 +59,13 @@ export const useUiStore = create<UiStore>((set, get) => ({
   showRuleCreator: false,
   showDevTools: false,
   showRulesPanel: true,
+  handResult: null,
   toastMessage: null,
   toastType: 'info',
   toastTimeoutId: null,
   trickWinner: null,
   isAnimatingTrick: false,
+  trickComplete: false,
   trickAnimationTimeoutId: null,
 
   // Actions
@@ -67,6 +78,8 @@ export const useUiStore = create<UiStore>((set, get) => ({
   setShowRuleCreator: (show) => set({ showRuleCreator: show }),
   setShowDevTools: (show) => set({ showDevTools: show }),
   setShowRulesPanel: (show) => set({ showRulesPanel: show }),
+
+  setHandResult: (result) => set({ handResult: result }),
 
   showToast: (message, type = 'info') => {
     // Clear existing timeout
@@ -101,15 +114,16 @@ export const useUiStore = create<UiStore>((set, get) => ({
       clearTimeout(existingTimeout);
     }
 
-    set({ trickWinner: winner });
+    set({ trickWinner: winner, trickComplete: false });
 
     // Start animation after showing cards
     const timeoutId = setTimeout(() => {
       set({ isAnimatingTrick: true });
 
-      // Clear animation after it completes
+      // Mark animation as complete (cards stay hidden via trickComplete flag)
       const clearTimeoutId = setTimeout(() => {
-        set({ isAnimatingTrick: false, trickWinner: null, trickAnimationTimeoutId: null });
+        // Don't clear trickWinner yet - keep cards hidden until new trick starts
+        set({ isAnimatingTrick: false, trickComplete: true, trickAnimationTimeoutId: null });
       }, 800);
 
       set({ trickAnimationTimeoutId: clearTimeoutId });
@@ -118,10 +132,20 @@ export const useUiStore = create<UiStore>((set, get) => ({
     set({ trickAnimationTimeoutId: timeoutId });
   },
 
+  clearTrickComplete: () => {
+    set({ trickComplete: false, trickWinner: null });
+  },
+
   cleanup: () => {
     const { toastTimeoutId, trickAnimationTimeoutId } = get();
     if (toastTimeoutId) clearTimeout(toastTimeoutId);
     if (trickAnimationTimeoutId) clearTimeout(trickAnimationTimeoutId);
-    set({ toastTimeoutId: null, trickAnimationTimeoutId: null });
+    set({
+      toastTimeoutId: null,
+      trickAnimationTimeoutId: null,
+      trickWinner: null,
+      isAnimatingTrick: false,
+      trickComplete: false,
+    });
   },
 }));

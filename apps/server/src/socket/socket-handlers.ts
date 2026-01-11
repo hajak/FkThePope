@@ -15,7 +15,6 @@ import {
   CreateRoomSchema,
   JoinRoomSchema,
   PlayCardSchema,
-  CreateRuleEventSchema,
   AddBotSchema,
   RemoveBotSchema,
 } from '../validation/schemas.js';
@@ -25,6 +24,8 @@ type GameServer = Server<ClientToServerEvents, ServerToClientEvents, {}, SocketD
 
 const lobbyManager = new LobbyManager();
 const activeGames = new Map<string, GameManager>();
+// Track which players have clicked "Continue" after a hand completes
+const pendingContinues = new Map<string, Set<PlayerPosition>>();
 
 /**
  * Setup socket event handlers
@@ -57,7 +58,7 @@ export function setupSocketHandlers(io: GameServer): void {
 
     // Game events
     socket.on('play-card', (data) => handlePlayCard(socket, io, data));
-    socket.on('create-rule', (data) => handleCreateRule(socket, io, data));
+    socket.on('continue-game', () => handleContinueGame(socket, io));
 
     // Bot events
     socket.on('add-bot', (data) => handleAddBot(socket, io, data));
@@ -65,6 +66,55 @@ export function setupSocketHandlers(io: GameServer): void {
 
     // Dev events
     socket.on('dev-reset-game', () => handleDevReset(socket, io));
+
+    // WebRTC signaling - relay to target player
+    socket.on('webrtc-offer', ({ to, offer }) => {
+      const roomId = socket.data.roomId;
+      const from = socket.data.position;
+      if (roomId && from) {
+        const room = lobbyManager.getRoom(roomId);
+        const targetPlayer = room?.players.get(to);
+        if (targetPlayer && !targetPlayer.isBot) {
+          const targetSocket = io.sockets.sockets.get(targetPlayer.socketId);
+          targetSocket?.emit('webrtc-offer', { from, offer });
+        }
+      }
+    });
+
+    socket.on('webrtc-answer', ({ to, answer }) => {
+      const roomId = socket.data.roomId;
+      const from = socket.data.position;
+      if (roomId && from) {
+        const room = lobbyManager.getRoom(roomId);
+        const targetPlayer = room?.players.get(to);
+        if (targetPlayer && !targetPlayer.isBot) {
+          const targetSocket = io.sockets.sockets.get(targetPlayer.socketId);
+          targetSocket?.emit('webrtc-answer', { from, answer });
+        }
+      }
+    });
+
+    socket.on('webrtc-ice-candidate', ({ to, candidate }) => {
+      const roomId = socket.data.roomId;
+      const from = socket.data.position;
+      if (roomId && from) {
+        const room = lobbyManager.getRoom(roomId);
+        const targetPlayer = room?.players.get(to);
+        if (targetPlayer && !targetPlayer.isBot) {
+          const targetSocket = io.sockets.sockets.get(targetPlayer.socketId);
+          targetSocket?.emit('webrtc-ice-candidate', { from, candidate });
+        }
+      }
+    });
+
+    // Mute status - broadcast to all other players in room
+    socket.on('mute-status', ({ isMuted }) => {
+      const roomId = socket.data.roomId;
+      const position = socket.data.position;
+      if (roomId && position) {
+        socket.to(roomId).emit('player-mute-status', { player: position, isMuted });
+      }
+    });
   });
 }
 
@@ -108,6 +158,7 @@ function handleCreateRoom(
 
   socket.emit('room-joined', {
     roomId: room.id,
+    roomName: room.name,
     position: 'south',
     players: getPlayerViews(room.id),
   });
@@ -143,12 +194,14 @@ function handleJoinRoom(
   }
 
   const { roomId } = validation.data;
+  const room = lobbyManager.getRoom(roomId);
   socket.join(roomId);
   socket.data.roomId = roomId;
   socket.data.position = result.position!;
 
   socket.emit('room-joined', {
     roomId,
+    roomName: room?.name ?? 'Unknown Room',
     position: result.position!,
     players: getPlayerViews(roomId),
   });
@@ -311,27 +364,30 @@ function handlePlayCard(
 
     // Handle hand completion
     if (result.handComplete) {
+      const serverState = gameManager.getServerState();
+      const tricks = {
+        north: serverState.players.north?.tricksWon ?? 0,
+        east: serverState.players.east?.tricksWon ?? 0,
+        south: serverState.players.south?.tricksWon ?? 0,
+        west: serverState.players.west?.tricksWon ?? 0,
+      };
       io.to(roomId).emit('hand-complete', {
         winner: result.handWinner!,
-        tricks: Object.fromEntries(
-          Object.entries(gameManager.getServerState().players)
-            .filter(([_, p]) => p !== null)
-            .map(([pos, p]) => [pos, p!.tricksWon])
-        ) as any,
+        tricks,
       });
 
-      // Check if winner is a bot - auto-start next hand
+      // Check if there are human players - if so, wait for them to continue
       const room = lobbyManager.getRoom(roomId);
-      const winnerPlayer = room?.players.get(result.handWinner!);
+      const humanPlayers = room ? getHumanPlayers(room) : [];
 
-      if (winnerPlayer?.isBot) {
-        // Bot wins - skip rule creation and start next hand after delay
-        setTimeout(() => {
-          startNextHandAfterBot(io, roomId, gameManager);
-        }, 2000);
+      if (humanPlayers.length > 0) {
+        // Initialize pending continues for this room
+        pendingContinues.set(roomId, new Set());
       } else {
-        // Human wins - enter rule creation phase
-        io.to(roomId).emit('rule-creation-phase', { winner: result.handWinner! });
+        // All bots - start next hand after a delay
+        setTimeout(() => {
+          startNextHand(io, roomId, gameManager);
+        }, 3000);
       }
       return; // Don't process bot turns or broadcast state yet
     }
@@ -347,77 +403,6 @@ function handlePlayCard(
     broadcastGameState(io, roomId, gameManager);
     processBotTurns(io, roomId, gameManager);
   }
-}
-
-/**
- * Handle creating a rule
- */
-function handleCreateRule(
-  socket: GameSocket,
-  io: GameServer,
-  data: unknown
-): void {
-  const validation = validateData(CreateRuleEventSchema, data);
-  if (!validation.success) {
-    socket.emit('error', { message: `Invalid rule data: ${validation.error}`, code: 'VALIDATION_ERROR' });
-    return;
-  }
-
-  const roomId = socket.data.roomId;
-  const position = socket.data.position;
-
-  if (!roomId || !position) {
-    socket.emit('error', { message: 'Not in a game', code: 'NOT_IN_GAME' });
-    return;
-  }
-
-  const gameManager = activeGames.get(roomId);
-  if (!gameManager) {
-    socket.emit('error', { message: 'Game not found', code: 'GAME_NOT_FOUND' });
-    return;
-  }
-
-  if (!gameManager.isRuleCreationPhase()) {
-    socket.emit('error', { message: 'Not in rule creation phase', code: 'WRONG_PHASE' });
-    return;
-  }
-
-  const winner = gameManager.getHandWinner();
-  if (winner !== position) {
-    socket.emit('error', { message: 'Only the hand winner can create a rule', code: 'NOT_WINNER' });
-    return;
-  }
-
-  const result = gameManager.addRule(position, validation.data.rule as any);
-
-  if (!result.success) {
-    socket.emit('error', { message: result.error!, code: 'INVALID_RULE' });
-    return;
-  }
-
-  // Broadcast the new rule
-  io.to(roomId).emit('rule-created', { rule: result.rule! });
-
-  // Start next hand
-  gameManager.startNextHand();
-  const { trumpSuit, hands } = gameManager.startHand();
-
-  const room = lobbyManager.getRoom(roomId)!;
-  for (const [pos, player] of room.players) {
-    if (!player.isBot) {
-      const playerSocket = io.sockets.sockets.get(player.socketId);
-      if (playerSocket) {
-        playerSocket.emit('hand-started', {
-          handNumber: gameManager.getServerState().currentHand?.number ?? 1,
-          trumpSuit,
-          yourHand: hands[pos],
-        });
-      }
-    }
-  }
-
-  broadcastGameState(io, roomId, gameManager);
-  processBotTurns(io, roomId, gameManager);
 }
 
 /**
@@ -497,9 +482,9 @@ function handleDevReset(socket: GameSocket, io: GameServer): void {
 }
 
 /**
- * Start next hand after bot wins (skipping rule creation)
+ * Start the next hand
  */
-function startNextHandAfterBot(
+function startNextHand(
   io: GameServer,
   roomId: string,
   gameManager: GameManager
@@ -574,20 +559,29 @@ async function processBotTurns(
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       if (result.handComplete) {
+        const serverState = gameManager.getServerState();
+        const tricks = {
+          north: serverState.players.north?.tricksWon ?? 0,
+          east: serverState.players.east?.tricksWon ?? 0,
+          south: serverState.players.south?.tricksWon ?? 0,
+          west: serverState.players.west?.tricksWon ?? 0,
+        };
         io.to(roomId).emit('hand-complete', {
           winner: result.handWinner!,
-          tricks: {} as any,
+          tricks,
         });
 
-        // Check if winner is a bot
-        const winnerPlayer = room.players.get(result.handWinner!);
-        if (winnerPlayer?.isBot) {
-          // Bot wins - skip rule creation, start next hand after delay
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-          startNextHandAfterBot(io, roomId, gameManager);
+        // Check if there are human players - if so, wait for them to continue
+        const room = lobbyManager.getRoom(roomId);
+        const humanPlayers = room ? getHumanPlayers(room) : [];
+
+        if (humanPlayers.length > 0) {
+          // Initialize pending continues for this room
+          pendingContinues.set(roomId, new Set());
         } else {
-          // Human wins - enter rule creation phase
-          io.to(roomId).emit('rule-creation-phase', { winner: result.handWinner! });
+          // All bots - start next hand after delay
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          startNextHand(io, roomId, gameManager);
         }
         return;
       }
@@ -652,4 +646,64 @@ function getPlayerViews(roomId: string): Array<any> {
       isConnected: true,
     };
   });
+}
+
+/**
+ * Get list of human player positions in a room
+ */
+function getHumanPlayers(room: { players: Map<PlayerPosition, { isBot: boolean }> }): PlayerPosition[] {
+  const humans: PlayerPosition[] = [];
+  for (const [position, player] of room.players) {
+    if (!player.isBot) {
+      humans.push(position);
+    }
+  }
+  return humans;
+}
+
+/**
+ * Handle player clicking Continue after hand completes
+ */
+function handleContinueGame(socket: GameSocket, io: GameServer): void {
+  const roomId = socket.data.roomId;
+  const position = socket.data.position;
+
+  if (!roomId || !position) {
+    socket.emit('error', { message: 'Not in a game', code: 'NOT_IN_GAME' });
+    return;
+  }
+
+  const gameManager = activeGames.get(roomId);
+  if (!gameManager) {
+    socket.emit('error', { message: 'Game not found', code: 'GAME_NOT_FOUND' });
+    return;
+  }
+
+  const room = lobbyManager.getRoom(roomId);
+  if (!room) {
+    socket.emit('error', { message: 'Room not found', code: 'ROOM_NOT_FOUND' });
+    return;
+  }
+
+  // Get or create pending continues set for this room
+  let continues = pendingContinues.get(roomId);
+  if (!continues) {
+    // No pending continue state - maybe all bots or already started
+    return;
+  }
+
+  // Mark this player as continued
+  continues.add(position);
+
+  // Check if all human players have continued
+  const humanPlayers = getHumanPlayers(room);
+  const allHumansContinued = humanPlayers.every(pos => continues!.has(pos));
+
+  if (allHumansContinued) {
+    // Clear pending state
+    pendingContinues.delete(roomId);
+
+    // Start next hand
+    startNextHand(io, roomId, gameManager);
+  }
 }

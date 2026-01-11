@@ -20,7 +20,14 @@
       "Bash(railway status:*)",
       "Bash(railway:*)",
       "Bash(ping:*)",
-      "Bash(RAILWAY_PROJECT_NAME=fkthepope railway up:*)"
+      "Bash(RAILWAY_PROJECT_NAME=fkthepope railway up:*)",
+      "Bash(echo:*)",
+      "Bash(git push:*)",
+      "Bash(gh repo create:*)",
+      "Bash(brew install:*)",
+      "Bash(gh auth status:*)",
+      "Bash(pnpm turbo build:*)",
+      "Bash(pkill:*)"
     ]
   }
 }

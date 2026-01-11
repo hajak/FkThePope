@@ -10,20 +10,21 @@ interface TrickPileProps {
 }
 
 // Visual positions for cards in the trick (relative to screen)
-// bottom = my card, left = player to my left, top = across, right = player to my right
+// Using a 2x2 grid layout to avoid overlapping with player seats
+// Cards are 70x98px (small size) - compact grid with slight overlap
 const VISUAL_OFFSETS: Record<string, { x: number; y: number }> = {
-  bottom: { x: 0, y: 40 },
-  left: { x: -50, y: 0 },
-  top: { x: 0, y: -40 },
-  right: { x: 50, y: 0 },
+  bottom: { x: -32, y: 25 },   // Bottom-left (my card)
+  left: { x: -32, y: -25 },    // Top-left
+  top: { x: 32, y: -25 },      // Top-right
+  right: { x: 32, y: 25 },     // Bottom-right
 };
 
 // Where cards fly to when the trick is won
 const WIN_DESTINATIONS: Record<string, { x: number; y: number }> = {
-  bottom: { x: 0, y: 200 },
-  left: { x: -250, y: 0 },
-  top: { x: 0, y: -200 },
-  right: { x: 250, y: 0 },
+  bottom: { x: 0, y: 400 },
+  left: { x: -450, y: 0 },
+  top: { x: 0, y: -400 },
+  right: { x: 450, y: 0 },
 };
 
 // Seat order for position calculations (clockwise)
@@ -32,6 +33,7 @@ const SEAT_ORDER: PlayerPosition[] = ['south', 'west', 'north', 'east'];
 export function TrickPile({ cards, winner }: TrickPileProps) {
   const trickWinner = useUiStore((s) => s.trickWinner);
   const isAnimating = useUiStore((s) => s.isAnimatingTrick);
+  const trickComplete = useUiStore((s) => s.trickComplete);
   const myPosition = useGameStore((s) => s.myPosition);
 
   // Convert absolute player position to visual position on screen
@@ -67,7 +69,7 @@ export function TrickPile({ cards, winner }: TrickPileProps) {
         return (
           <div
             key={`${played.card.rank}_${played.card.suit}_${played.playedBy}`}
-            className={`trick-card ${isWinningCard ? 'winner' : ''} ${isAnimating ? 'animating' : ''}`}
+            className={`trick-card ${isWinningCard ? 'winner' : ''} ${isAnimating ? 'animating' : ''} ${trickComplete ? 'complete' : ''}`}
             style={{ transform }}
           >
             {played.faceDown ? (

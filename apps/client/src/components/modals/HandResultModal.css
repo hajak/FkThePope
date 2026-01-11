@@ -1,0 +1,93 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.hand-result-modal {
+  background: var(--surface-elevated);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  min-width: 320px;
+  max-width: 400px;
+  text-align: center;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.hand-result-modal h2 {
+  margin: 0 0 1.5rem;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+}
+
+.hand-result-modal h2.winner-text {
+  color: var(--color-success);
+}
+
+.hand-scores {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.score-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  margin: 0.25rem 0;
+}
+
+.score-row.winner {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.score-row.me:not(.winner) {
+  background: var(--surface-elevated);
+}
+
+.position-name {
+  text-transform: capitalize;
+}
+
+.tricks-count {
+  font-weight: 500;
+}
+
+.result-hint {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin: 1rem 0;
+}
+
+.hand-result-modal .btn-primary {
+  margin-top: 0.5rem;
+}

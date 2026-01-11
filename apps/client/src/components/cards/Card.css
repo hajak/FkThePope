@@ -10,22 +10,28 @@
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+.card-mini {
+  width: 40px;
+  height: 56px;
+  font-size: 8px;
+}
+
 .card-small {
-  width: 50px;
-  height: 70px;
-  font-size: 10px;
+  width: 70px;
+  height: 98px;
+  font-size: 12px;
 }
 
 .card-medium {
   width: var(--card-width);
   height: var(--card-height);
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .card-large {
-  width: 100px;
-  height: 140px;
-  font-size: 18px;
+  width: 120px;
+  height: 168px;
+  font-size: 20px;
 }
 
 .card.clickable {

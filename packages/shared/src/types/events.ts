@@ -16,6 +16,21 @@ export interface RoomInfo {
 }
 
 /**
+ * WebRTC signaling types (generic to work in both browser and Node.js)
+ */
+export interface RTCOfferAnswer {
+  type: string;
+  sdp?: string;
+}
+
+export interface RTCIceCandidate {
+  candidate?: string;
+  sdpMid?: string | null;
+  sdpMLineIndex?: number | null;
+  usernameFragment?: string | null;
+}
+
+/**
  * Events sent from client to server
  */
 export type ClientToServerEvents = {
@@ -28,7 +43,7 @@ export type ClientToServerEvents = {
 
   // Game events
   'play-card': (data: { card: Card; faceDown: boolean }) => void;
-  'create-rule': (data: { rule: Omit<Rule, 'id' | 'createdBy' | 'createdAtHand' | 'createdAt' | 'isActive'> }) => void;
+  'continue-game': () => void;
 
   // Dev/bot events
   'add-bot': (data: { position: PlayerPosition }) => void;
@@ -38,6 +53,14 @@ export type ClientToServerEvents = {
   'dev-inject-rule': (data: { rule: Rule }) => void;
   'dev-set-trump': (data: { suit: string }) => void;
   'dev-reset-game': () => void;
+
+  // WebRTC signaling
+  'webrtc-offer': (data: { to: PlayerPosition; offer: RTCOfferAnswer }) => void;
+  'webrtc-answer': (data: { to: PlayerPosition; answer: RTCOfferAnswer }) => void;
+  'webrtc-ice-candidate': (data: { to: PlayerPosition; candidate: RTCIceCandidate }) => void;
+
+  // Audio/Video status
+  'mute-status': (data: { isMuted: boolean }) => void;
 };
 
 /**
@@ -50,7 +73,7 @@ export type ServerToClientEvents = {
 
   // Lobby events
   'lobby-state': (data: { rooms: RoomInfo[] }) => void;
-  'room-joined': (data: { roomId: string; position: PlayerPosition; players: Array<PlayerView | null> }) => void;
+  'room-joined': (data: { roomId: string; roomName: string; position: PlayerPosition; players: Array<PlayerView | null> }) => void;
   'room-updated': (data: { players: Array<PlayerView | null> }) => void;
   'room-left': () => void;
 
@@ -75,12 +98,16 @@ export type ServerToClientEvents = {
   'hand-started': (data: { handNumber: number; trumpSuit: string; yourHand: Card[] }) => void;
   'hand-complete': (data: { winner: PlayerPosition; tricks: Record<PlayerPosition, number>; tieBreaker?: PlayerPosition }) => void;
 
-  // Rule events
-  'rule-creation-phase': (data: { winner: PlayerPosition }) => void;
-  'rule-created': (data: { rule: Rule }) => void;
-
   // Action log
   'action': (data: { action: GameAction }) => void;
+
+  // WebRTC signaling
+  'webrtc-offer': (data: { from: PlayerPosition; offer: RTCOfferAnswer }) => void;
+  'webrtc-answer': (data: { from: PlayerPosition; answer: RTCOfferAnswer }) => void;
+  'webrtc-ice-candidate': (data: { from: PlayerPosition; candidate: RTCIceCandidate }) => void;
+
+  // Audio/Video status
+  'player-mute-status': (data: { player: PlayerPosition; isMuted: boolean }) => void;
 };
 
 /**

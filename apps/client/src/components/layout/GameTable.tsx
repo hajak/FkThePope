@@ -1,7 +1,41 @@
+import { useRef, useEffect } from 'react';
 import type { PlayerPosition, PlayerView, TrickState, Suit } from '@fkthepope/shared';
 import { TrickPile } from '../cards/TrickPile';
 import { CardBack } from '../cards/Card';
 import './GameTable.css';
+
+interface VideoPlaceholderProps {
+  stream: MediaStream | null | undefined;
+  isMuted?: boolean;
+  isLocalPlayer?: boolean;
+}
+
+function VideoPlaceholder({ stream, isMuted, isLocalPlayer }: VideoPlaceholderProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+
+  return (
+    <div className="video-placeholder">
+      {stream ? (
+        <video ref={videoRef} autoPlay muted={isLocalPlayer} playsInline />
+      ) : (
+        <div className="no-video">
+          <div className="video-icon">📹</div>
+        </div>
+      )}
+      {isMuted && (
+        <div className="mute-indicator" title="Muted">
+          🔇
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface GameTableProps {
   players: Record<PlayerPosition, PlayerView | null>;
@@ -9,6 +43,9 @@ interface GameTableProps {
   myPosition: PlayerPosition;
   trumpSuit: Suit | null; // Kept for potential future use
   waitingFor: PlayerPosition | null;
+  videoStreams?: Record<PlayerPosition, MediaStream | null>;
+  playerMuteStatus?: Record<PlayerPosition, boolean>;
+  isLocalMuted?: boolean;
 }
 
 const SEAT_ORDER: PlayerPosition[] = ['south', 'west', 'north', 'east'];
@@ -19,6 +56,9 @@ export function GameTable({
   myPosition,
   trumpSuit: _trumpSuit,
   waitingFor,
+  videoStreams,
+  playerMuteStatus,
+  isLocalMuted,
 }: GameTableProps) {
   // Rotate seats so myPosition is always at bottom
   const myIndex = SEAT_ORDER.indexOf(myPosition);
@@ -56,6 +96,12 @@ export function GameTable({
             key={position}
             className={`seat seat-${relPos} ${isCurrentTurn ? 'current-turn' : ''}`}
           >
+            {/* Video placeholder for each seat */}
+            <VideoPlaceholder
+              stream={videoStreams?.[position]}
+              isMuted={position === myPosition ? isLocalMuted : playerMuteStatus?.[position]}
+              isLocalPlayer={position === myPosition}
+            />
             {player && (
               <>
                 <div className="seat-info">
@@ -66,7 +112,7 @@ export function GameTable({
                   <div className="seat-cards">
                     {Array.from({ length: Math.min(player.cardCount, 5) }).map((_, i) => (
                       <div key={i} className="mini-card">
-                        <CardBack size="small" />
+                        <CardBack size="mini" />
                       </div>
                     ))}
                     {player.cardCount > 5 && (

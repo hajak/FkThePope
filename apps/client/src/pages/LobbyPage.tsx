@@ -64,8 +64,14 @@ export function LobbyPage() {
     return (
       <div className="lobby-page">
         <div className="lobby-card">
-          <h1>FkThePope</h1>
-          <p className="subtitle">A Whist-inspired card game with dynamic rules</p>
+          <div className="lobby-logo">
+            <span className="logo-cards">
+              <span className="logo-card red">A</span>
+              <span className="logo-card black">A</span>
+            </span>
+            <h1>Whist Online</h1>
+          </div>
+          <p className="subtitle">Classic 4-player trick-taking card game</p>
 
           <div className="name-form">
             <input
@@ -101,7 +107,7 @@ export function LobbyPage() {
     return (
       <div className="lobby-page">
         <div className="lobby-card room-card">
-          <h2>Room: {currentRoom.id}</h2>
+          <h2>Room: {currentRoom.name}</h2>
 
           <div className="room-players">
             {positions.map((pos, idx) => {
