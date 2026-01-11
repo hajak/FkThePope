@@ -153,6 +153,9 @@ export function useSocket() {
       const trickComplete = useUiStore.getState().trickComplete;
       if (trickComplete) {
         clearTrickComplete();
+        // Also clear preserved trick to prevent stale cards from previous trick
+        clearPreservedTrick();
+        isAnimatingRef.current = false;
       }
 
       // Add card to trick immediately so it shows before game-state update

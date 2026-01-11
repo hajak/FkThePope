@@ -125,8 +125,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             currentTrick: updatedTrick,
           },
         },
-        // Also update preserved trick if we're preserving
-        preservedTrick: state.isPreservingTrick ? updatedTrick : state.preservedTrick,
+        // Don't update preserved trick - it should be a frozen snapshot for animation
       };
     }),
 
