@@ -5,7 +5,6 @@ import { useVideoStore } from '../stores/video-store';
 import { GameTable } from '../components/layout/GameTable';
 import { Hand } from '../components/cards/Hand';
 import { HandResultModal } from '../components/modals/HandResultModal';
-import { RulesPanel } from '../components/rules/RulesPanel';
 import type { Card, PlayerPosition } from '@fkthepope/shared';
 import './GamePage.css';
 
@@ -28,6 +27,7 @@ export function GamePage() {
   // UI state
   const [showStats, setShowStats] = useState(false);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   // Video state
   const localStream = useVideoStore((s) => s.localStream);
@@ -116,15 +116,17 @@ export function GamePage() {
           <h1>Whist Online</h1>
         </div>
 
-        {/* Trump suit display */}
-        {trumpSuit && (
-          <div className={`trump-badge trump-${trumpSuit}`}>
-            <span className="trump-label">Trump</span>
-            <span className={`trump-icon suit-${trumpSuit}`}>
-              {trumpSuit === 'hearts' ? '♥' : trumpSuit === 'diamonds' ? '♦' : trumpSuit === 'clubs' ? '♣' : '♠'}
-            </span>
-          </div>
-        )}
+        {/* Trump suit display - centered */}
+        <div className="header-center">
+          {trumpSuit && (
+            <div className={`trump-badge trump-${trumpSuit}`}>
+              <span className={`trump-icon suit-${trumpSuit}`}>
+                {trumpSuit === 'hearts' ? '♥' : trumpSuit === 'diamonds' ? '♦' : trumpSuit === 'clubs' ? '♣' : '♠'}
+              </span>
+              <span className={`trump-text suit-${trumpSuit}`}>Trump</span>
+            </div>
+          )}
+        </div>
 
         {/* Top right controls */}
         <div className="header-controls">
@@ -134,6 +136,14 @@ export function GamePage() {
             title="View game statistics"
           >
             Stats
+          </button>
+
+          <button
+            className="header-btn rules-btn"
+            onClick={() => setShowRules(true)}
+            title="View game rules"
+          >
+            Rules
           </button>
 
           {/* Video controls */}
@@ -170,6 +180,8 @@ export function GamePage() {
               Start Video
             </button>
           )}
+
+          <div className="header-spacer"></div>
 
           <button
             className="header-btn quit-btn"
@@ -231,9 +243,6 @@ export function GamePage() {
       {/* Hand result modal */}
       <HandResultModal />
 
-      {/* Rules panel */}
-      <RulesPanel trumpSuit={trumpSuit} />
-
       {/* Stats Modal */}
       {showStats && (
         <div className="modal-overlay" onClick={() => setShowStats(false)}>
@@ -279,6 +288,52 @@ export function GamePage() {
                 Quit Game
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rules Modal */}
+      {showRules && (
+        <div className="modal-overlay" onClick={() => setShowRules(false)}>
+          <div className="modal-content rules-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>How to Play Whist</h2>
+
+            <div className="rules-content">
+              <div className="rule-section">
+                <h4>Objective</h4>
+                <p>Win the most tricks in each hand. The player with the most tricks wins the hand and scores 1 point.</p>
+              </div>
+
+              <div className="rule-section">
+                <h4>Setup</h4>
+                <ul>
+                  <li>4 players, each dealt 13 cards</li>
+                  <li>Trump suit is randomly chosen each hand</li>
+                </ul>
+              </div>
+
+              <div className="rule-section">
+                <h4>Playing</h4>
+                <ul>
+                  <li><strong>Follow suit:</strong> You must play a card of the led suit if you have one</li>
+                  <li><strong>Trump:</strong> If you can't follow suit, you may play a trump card</li>
+                  <li><strong>Discard:</strong> If you can't follow and have no trumps, play any card</li>
+                </ul>
+              </div>
+
+              <div className="rule-section">
+                <h4>Winning Tricks</h4>
+                <ul>
+                  <li>Highest trump card wins</li>
+                  <li>If no trumps played, highest card of led suit wins</li>
+                  <li>Winner leads the next trick</li>
+                </ul>
+              </div>
+            </div>
+
+            <button className="btn-primary" onClick={() => setShowRules(false)}>
+              Back to Game
+            </button>
           </div>
         </div>
       )}

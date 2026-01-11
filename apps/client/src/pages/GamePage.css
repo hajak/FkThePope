@@ -7,6 +7,7 @@
 
 /* Game Header - Clean and minimal */
 .game-header {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -64,26 +65,34 @@
   z-index: 2;
 }
 
-/* Trump Badge - Centered, prominent */
+/* Header center - for trump display */
+.header-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Trump Badge - Clean and aligned */
 .trump-badge {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 20px;
-  border-radius: 25px;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
   border: 2px solid;
   font-weight: 600;
 }
 
-.trump-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  opacity: 0.8;
+.trump-icon {
+  font-size: 22px;
+  line-height: 1;
 }
 
-.trump-icon {
-  font-size: 24px;
+.trump-text {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Trump colors */
@@ -91,6 +100,12 @@
 .trump-badge.trump-diamonds {
   background: rgba(231, 76, 60, 0.15);
   border-color: rgba(231, 76, 60, 0.6);
+}
+
+.trump-icon.suit-hearts,
+.trump-icon.suit-diamonds,
+.trump-text.suit-hearts,
+.trump-text.suit-diamonds {
   color: #e74c3c;
 }
 
@@ -98,6 +113,12 @@
 .trump-badge.trump-spades {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.4);
+}
+
+.trump-icon.suit-clubs,
+.trump-icon.suit-spades,
+.trump-text.suit-clubs,
+.trump-text.suit-spades {
   color: #fff;
 }
 
@@ -167,6 +188,20 @@
 
 .stats-btn:hover {
   background: rgba(100, 181, 246, 0.25);
+}
+
+.rules-btn {
+  background: rgba(156, 136, 255, 0.15);
+  border-color: rgba(156, 136, 255, 0.4);
+  color: #9c88ff;
+}
+
+.rules-btn:hover {
+  background: rgba(156, 136, 255, 0.25);
+}
+
+.header-spacer {
+  width: 20px;
 }
 
 .quit-btn {
@@ -343,6 +378,61 @@
 /* Quit Modal */
 .quit-modal {
   text-align: center;
+}
+
+/* Rules Modal */
+.rules-modal {
+  max-width: 500px;
+}
+
+.rules-content {
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.rule-section {
+  margin-bottom: 20px;
+}
+
+.rule-section:last-child {
+  margin-bottom: 0;
+}
+
+.rule-section h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-accent);
+  margin: 0 0 8px;
+}
+
+.rule-section p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  text-align: left;
+}
+
+.rule-section ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.rule-section li {
+  margin-bottom: 4px;
+}
+
+.rule-section strong {
+  color: var(--color-text);
+}
+
+.rules-modal .btn-primary {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
 }
 
 .btn-danger {
