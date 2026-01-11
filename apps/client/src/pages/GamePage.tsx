@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useGameStore, useMyHand, useLegalMoves, useIsMyTurn, useTrumpSuit, useCurrentTrick } from '../stores/game-store';
 import { useGameActions } from '../socket/use-socket';
 import { useVideoStore } from '../stores/video-store';
@@ -47,17 +47,33 @@ export function GamePage() {
     return streams;
   }, [localStream, remoteStreams, myPosition]);
 
-  // Start video calls when we have local stream and other players
+  // Track which players we've already sent offers to
+  const offeredToRef = useRef<Set<PlayerPosition>>(new Set());
+
+  // Start video calls when we have local stream - only send offers once per player
   useEffect(() => {
     if (localStream && myPosition && gameState) {
       const positions: PlayerPosition[] = ['north', 'east', 'south', 'west'];
       positions.forEach(pos => {
-        if (pos !== myPosition && gameState.players[pos] && !gameState.players[pos]?.isBot) {
+        if (
+          pos !== myPosition &&
+          gameState.players[pos] &&
+          !gameState.players[pos]?.isBot &&
+          !offeredToRef.current.has(pos)
+        ) {
+          offeredToRef.current.add(pos);
           sendOffer(pos);
         }
       });
     }
   }, [localStream, myPosition, gameState, sendOffer]);
+
+  // Clear offered tracking when local stream stops
+  useEffect(() => {
+    if (!localStream) {
+      offeredToRef.current.clear();
+    }
+  }, [localStream]);
 
   if (!gameState || !myPosition) {
     return <div className="game-page">Loading...</div>;
