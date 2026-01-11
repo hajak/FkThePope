@@ -109,6 +109,60 @@
   color: var(--color-text);
 }
 
+/* Larger screens - make panel bigger */
+@media (min-width: 1400px) {
+  .rules-panel {
+    width: 280px;
+    padding: 20px;
+    font-size: 13px;
+  }
+
+  .rules-panel h3 {
+    font-size: 16px;
+  }
+
+  .rules-section h4 {
+    font-size: 13px;
+  }
+
+  .trump-symbol {
+    font-size: 42px;
+  }
+
+  .trump-name {
+    font-size: 20px;
+  }
+}
+
+/* Medium-small screens - make panel 10% smaller */
+@media (max-width: 1300px) and (min-width: 1101px) {
+  .rules-panel {
+    width: 216px;
+    padding: 14px;
+    font-size: 11px;
+  }
+
+  .rules-panel h3 {
+    font-size: 12px;
+  }
+
+  .rules-section h4 {
+    font-size: 11px;
+  }
+
+  .rules-section ul {
+    padding-left: 14px;
+  }
+
+  .trump-symbol {
+    font-size: 32px;
+  }
+
+  .trump-name {
+    font-size: 16px;
+  }
+}
+
 /* Hide on smaller screens */
 @media (max-width: 1100px) {
   .rules-panel {

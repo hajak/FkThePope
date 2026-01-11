@@ -28,7 +28,8 @@
       "Bash(gh auth status:*)",
       "Bash(pnpm turbo build:*)",
       "Bash(pkill:*)",
-      "Bash(pnpm run typecheck:*)"
+      "Bash(pnpm run typecheck:*)",
+      "Bash(pnpm run build:*)"
     ]
   }
 }

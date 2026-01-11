@@ -125,7 +125,7 @@ export class LobbyManager {
   /**
    * Leave a room
    */
-  leaveRoom(socketId: string): { roomId?: string; wasHost: boolean; roomDeleted: boolean } {
+  leaveRoom(socketId: string): { roomId?: string; wasHost: boolean; roomDeleted: boolean; newHostId?: string } {
     const roomId = this.playerRooms.get(socketId);
     if (!roomId) {
       return { wasHost: false, roomDeleted: false };
@@ -149,17 +149,30 @@ export class LobbyManager {
 
     const wasHost = room.hostId === socketId;
 
-    // If room is empty or host left, delete room
-    if (room.players.size === 0 || wasHost) {
-      // Remove all player mappings
+    // Count human players remaining
+    const humanPlayers = Array.from(room.players.values()).filter(p => !p.isBot);
+
+    // If no human players left, delete room
+    if (humanPlayers.length === 0) {
+      // Remove all player mappings (bots don't have real mappings)
       for (const player of room.players.values()) {
-        this.playerRooms.delete(player.socketId);
+        if (!player.isBot) {
+          this.playerRooms.delete(player.socketId);
+        }
       }
       this.rooms.delete(roomId);
       return { roomId, wasHost, roomDeleted: true };
     }
 
-    return { roomId, wasHost, roomDeleted: false };
+    // If host left but there are still human players, transfer host
+    let newHostId: string | undefined;
+    const firstHuman = humanPlayers[0];
+    if (wasHost && firstHuman) {
+      newHostId = firstHuman.socketId;
+      room.hostId = newHostId;
+    }
+
+    return { roomId, wasHost, roomDeleted: false, newHostId };
   }
 
   /**

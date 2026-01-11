@@ -308,10 +308,10 @@ function handleLeaveRoom(socket: GameSocket, io: GameServer): void {
       io.to(result.roomId).emit('room-updated', {
         players: getPlayerViews(result.roomId),
       });
+    } else {
+      // Only clean up game if room is deleted (no human players left)
+      activeGames.delete(result.roomId);
     }
-
-    // Clean up game if exists
-    activeGames.delete(result.roomId);
   }
 
   socket.data.roomId = null;

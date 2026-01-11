@@ -6,6 +6,9 @@ import { getSocket } from '../socket/socket-client';
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' },
 ];
 
 interface VideoStore {
@@ -177,13 +180,34 @@ export const useVideoStore = create<VideoStore>((set, get) => ({
     // Handle connection state changes
     pc.onconnectionstatechange = () => {
       console.log(`Connection state with ${position}: ${pc.connectionState}`);
-      if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+      if (pc.connectionState === 'failed') {
+        // Clear the remote stream
         set(state => ({
           remoteStreams: {
             ...state.remoteStreams,
             [position]: null,
           },
         }));
+        // Try to reconnect after a short delay
+        setTimeout(() => {
+          const { localStream } = get();
+          if (localStream) {
+            console.log(`Attempting to reconnect with ${position}`);
+            get().sendOffer(position);
+          }
+        }, 2000);
+      } else if (pc.connectionState === 'disconnected') {
+        // Connection temporarily lost, wait for ICE to reconnect
+        console.log(`Connection with ${position} disconnected, waiting for reconnect...`);
+      }
+    };
+
+    // Handle ICE connection state changes
+    pc.oniceconnectionstatechange = () => {
+      console.log(`ICE connection state with ${position}: ${pc.iceConnectionState}`);
+      if (pc.iceConnectionState === 'failed') {
+        // Restart ICE
+        pc.restartIce();
       }
     };
 
