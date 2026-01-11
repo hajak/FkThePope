@@ -31,6 +31,15 @@ export interface RTCIceCandidate {
 }
 
 /**
+ * Pending player request for join approval
+ */
+export interface PendingPlayer {
+  socketId: string;
+  playerName: string;
+  requestedAt: number;
+}
+
+/**
  * Events sent from client to server
  */
 export type ClientToServerEvents = {
@@ -38,8 +47,13 @@ export type ClientToServerEvents = {
   'join-lobby': (data: { playerName: string }) => void;
   'create-room': (data: { roomName: string }) => void;
   'join-room': (data: { roomId: string; position?: PlayerPosition }) => void;
+  'rejoin-room': (data: { roomId: string; position: PlayerPosition; playerName: string }) => void;
   'leave-room': () => void;
   'start-game': () => void;
+
+  // Player approval events (host only)
+  'approve-player': (data: { socketId: string; position: PlayerPosition }) => void;
+  'reject-player': (data: { socketId: string }) => void;
 
   // Game events
   'play-card': (data: { card: Card; faceDown: boolean }) => void;
@@ -76,6 +90,13 @@ export type ServerToClientEvents = {
   'room-joined': (data: { roomId: string; roomName: string; position: PlayerPosition; players: Array<PlayerView | null> }) => void;
   'room-updated': (data: { players: Array<PlayerView | null> }) => void;
   'room-left': () => void;
+
+  // Player approval events
+  'join-requested': (data: { roomId: string; roomName: string }) => void;
+  'join-request': (data: { pending: PendingPlayer }) => void;
+  'pending-players': (data: { pending: PendingPlayer[] }) => void;
+  'join-approved': (data: { position: PlayerPosition }) => void;
+  'join-rejected': (data: { message: string }) => void;
 
   // Game lifecycle events
   'game-started': (data: { gameState: ClientGameState }) => void;

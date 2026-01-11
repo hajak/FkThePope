@@ -61,6 +61,22 @@ export const useVideoStore = create<VideoStore>((set, get) => ({
         video: true,
         audio: true,
       });
+
+      // Add tracks to any existing peer connections
+      const { peerConnections } = get();
+      Object.values(peerConnections).forEach(pc => {
+        if (pc) {
+          stream.getTracks().forEach(track => {
+            // Check if track is already added
+            const senders = pc.getSenders();
+            const trackAlreadyAdded = senders.some(sender => sender.track === track);
+            if (!trackAlreadyAdded) {
+              pc.addTrack(track, stream);
+            }
+          });
+        }
+      });
+
       set({ localStream: stream, error: null });
     } catch (err) {
       set({ error: 'Failed to access camera/microphone' });

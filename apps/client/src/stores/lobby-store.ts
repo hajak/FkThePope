@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { RoomInfo, PlayerView } from '@fkthepope/shared';
+import type { RoomInfo, PlayerView, PendingPlayer } from '@fkthepope/shared';
 
 interface LobbyStore {
   // Room list
@@ -12,15 +12,30 @@ interface LobbyStore {
     players: Array<PlayerView | null>;
   } | null;
 
+  // Pending join state (for players waiting for approval)
+  pendingJoin: {
+    roomId: string;
+    roomName: string;
+  } | null;
+
+  // Pending players (for hosts to approve/reject)
+  pendingPlayers: PendingPlayer[];
+
   // Actions
   setRooms: (rooms: RoomInfo[]) => void;
   setCurrentRoom: (room: { id: string; name: string; players: Array<PlayerView | null> } | null) => void;
   updateRoomPlayers: (players: Array<PlayerView | null>) => void;
+  setPendingJoin: (pending: { roomId: string; roomName: string } | null) => void;
+  setPendingPlayers: (pending: PendingPlayer[]) => void;
+  addPendingPlayer: (pending: PendingPlayer) => void;
+  removePendingPlayer: (socketId: string) => void;
 }
 
 export const useLobbyStore = create<LobbyStore>((set) => ({
   rooms: [],
   currentRoom: null,
+  pendingJoin: null,
+  pendingPlayers: [],
 
   setRooms: (rooms) => set({ rooms }),
 
@@ -31,5 +46,19 @@ export const useLobbyStore = create<LobbyStore>((set) => ({
       currentRoom: state.currentRoom
         ? { ...state.currentRoom, players }
         : null,
+    })),
+
+  setPendingJoin: (pending) => set({ pendingJoin: pending }),
+
+  setPendingPlayers: (pending) => set({ pendingPlayers: pending }),
+
+  addPendingPlayer: (pending) =>
+    set((state) => ({
+      pendingPlayers: [...state.pendingPlayers, pending],
+    })),
+
+  removePendingPlayer: (socketId) =>
+    set((state) => ({
+      pendingPlayers: state.pendingPlayers.filter((p) => p.socketId !== socketId),
     })),
 }));

@@ -14,9 +14,12 @@ import {
   JoinLobbySchema,
   CreateRoomSchema,
   JoinRoomSchema,
+  RejoinRoomSchema,
   PlayCardSchema,
   AddBotSchema,
   RemoveBotSchema,
+  ApprovePlayerSchema,
+  RejectPlayerSchema,
 } from '../validation/schemas.js';
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
@@ -46,6 +49,8 @@ export function setupSocketHandlers(io: GameServer): void {
     // Handle disconnection
     socket.on('disconnect', () => {
       console.log(`Client disconnected: ${socket.id}`);
+      // Remove from any pending lists
+      lobbyManager.removePendingPlayer(socket.id);
       handleLeaveRoom(socket, io);
     });
 
@@ -53,6 +58,7 @@ export function setupSocketHandlers(io: GameServer): void {
     socket.on('join-lobby', (data) => handleJoinLobby(socket, io, data));
     socket.on('create-room', (data) => handleCreateRoom(socket, io, data));
     socket.on('join-room', (data) => handleJoinRoom(socket, io, data));
+    socket.on('rejoin-room', (data) => handleRejoinRoom(socket, io, data));
     socket.on('leave-room', () => handleLeaveRoom(socket, io));
     socket.on('start-game', () => handleStartGame(socket, io));
 
@@ -63,6 +69,10 @@ export function setupSocketHandlers(io: GameServer): void {
     // Bot events
     socket.on('add-bot', (data) => handleAddBot(socket, io, data));
     socket.on('remove-bot', (data) => handleRemoveBot(socket, io, data));
+
+    // Player approval events (host only)
+    socket.on('approve-player', (data) => handleApprovePlayer(socket, io, data));
+    socket.on('reject-player', (data) => handleRejectPlayer(socket, io, data));
 
     // Dev events
     socket.on('dev-reset-game', () => handleDevReset(socket, io));
@@ -168,7 +178,7 @@ function handleCreateRoom(
 }
 
 /**
- * Handle joining a room
+ * Handle joining a room - adds player to pending list for host approval
  */
 function handleJoinRoom(
   socket: GameSocket,
@@ -181,37 +191,106 @@ function handleJoinRoom(
     return;
   }
 
-  const result = lobbyManager.joinRoom(
-    validation.data.roomId,
-    socket.id,
-    socket.data.playerName,
-    validation.data.position as PlayerPosition | undefined
-  );
+  const { roomId } = validation.data;
+  const room = lobbyManager.getRoom(roomId);
+
+  if (!room) {
+    socket.emit('error', { message: 'Room not found', code: 'ROOM_NOT_FOUND' });
+    return;
+  }
+
+  // Add to pending list instead of joining directly
+  const result = lobbyManager.addPendingPlayer(roomId, socket.id, socket.data.playerName);
 
   if (!result.success) {
     socket.emit('error', { message: result.error!, code: 'JOIN_FAILED' });
     return;
   }
 
-  const { roomId } = validation.data;
+  // Tell the player they're waiting for approval
+  socket.emit('join-requested', { roomId, roomName: room.name });
+
+  // Notify host of new pending player
+  const hostSocket = io.sockets.sockets.get(room.hostId);
+  if (hostSocket) {
+    hostSocket.emit('join-request', { pending: result.pending! });
+  }
+}
+
+/**
+ * Handle rejoining a room after disconnect
+ */
+function handleRejoinRoom(
+  socket: GameSocket,
+  io: GameServer,
+  data: unknown
+): void {
+  const validation = validateData(RejoinRoomSchema, data);
+  if (!validation.success) {
+    socket.emit('error', { message: `Invalid data: ${validation.error}`, code: 'VALIDATION_ERROR' });
+    return;
+  }
+
+  const { roomId, position, playerName } = validation.data;
   const room = lobbyManager.getRoom(roomId);
+
+  if (!room) {
+    socket.emit('error', { message: 'Room no longer exists', code: 'ROOM_NOT_FOUND' });
+    return;
+  }
+
+  // Check if position is available or occupied by a disconnected player
+  const existingPlayer = room.players.get(position);
+  if (existingPlayer && !existingPlayer.isBot) {
+    // Position is occupied - check if same player name (simple reconnect check)
+    if (existingPlayer.name !== playerName) {
+      socket.emit('error', { message: 'Position is already taken', code: 'POSITION_TAKEN' });
+      return;
+    }
+    // Same player reconnecting - update their socket
+    lobbyManager.updatePlayerSocket(roomId, position, socket.id, playerName);
+  } else if (existingPlayer?.isBot) {
+    // Replace bot with human player
+    lobbyManager.removeBot(roomId, position);
+    const result = lobbyManager.joinRoom(roomId, socket.id, playerName, position);
+    if (!result.success) {
+      socket.emit('error', { message: result.error!, code: 'REJOIN_FAILED' });
+      return;
+    }
+  } else {
+    // Position is empty - join normally
+    const result = lobbyManager.joinRoom(roomId, socket.id, playerName, position);
+    if (!result.success) {
+      socket.emit('error', { message: result.error!, code: 'REJOIN_FAILED' });
+      return;
+    }
+  }
+
+  socket.data.playerName = playerName;
   socket.join(roomId);
   socket.data.roomId = roomId;
-  socket.data.position = result.position!;
+  socket.data.position = position;
 
   socket.emit('room-joined', {
     roomId,
-    roomName: room?.name ?? 'Unknown Room',
-    position: result.position!,
+    roomName: room.name,
+    position,
     players: getPlayerViews(roomId),
   });
 
-  // Notify other players in room
+  // If game is in progress, send current game state
+  const gameManager = activeGames.get(roomId);
+  if (gameManager) {
+    socket.emit('game-started', {
+      gameState: gameManager.getClientState(position),
+    });
+  }
+
+  // Notify other players
   socket.to(roomId).emit('room-updated', {
     players: getPlayerViews(roomId),
   });
 
-  // Broadcast updated room list
   io.emit('lobby-state', { rooms: lobbyManager.getRoomList() });
 }
 
@@ -393,11 +472,11 @@ function handlePlayCard(
     }
 
     // Add delay before clearing trick and continuing
-    // Wait 2.5s to ensure all clients see the 4th card and animation completes
+    // Wait 2.75s to ensure all clients see the 4th card and animation completes (+10%)
     setTimeout(() => {
       broadcastGameState(io, roomId, gameManager);
       processBotTurns(io, roomId, gameManager);
-    }, 2500);
+    }, 2750);
   } else {
     // No trick complete - broadcast immediately
     broadcastGameState(io, roomId, gameManager);
@@ -461,6 +540,121 @@ function handleRemoveBot(
       players: getPlayerViews(roomId),
     });
   }
+}
+
+/**
+ * Handle host approving a pending player
+ */
+function handleApprovePlayer(
+  socket: GameSocket,
+  io: GameServer,
+  data: unknown
+): void {
+  const validation = validateData(ApprovePlayerSchema, data);
+  if (!validation.success) {
+    socket.emit('error', { message: `Invalid data: ${validation.error}`, code: 'VALIDATION_ERROR' });
+    return;
+  }
+
+  const roomId = socket.data.roomId;
+  if (!roomId) {
+    socket.emit('error', { message: 'Not in a room', code: 'NOT_IN_ROOM' });
+    return;
+  }
+
+  const room = lobbyManager.getRoom(roomId);
+  if (!room) {
+    socket.emit('error', { message: 'Room not found', code: 'ROOM_NOT_FOUND' });
+    return;
+  }
+
+  // Only host can approve players
+  if (room.hostId !== socket.id) {
+    socket.emit('error', { message: 'Only host can approve players', code: 'NOT_HOST' });
+    return;
+  }
+
+  const { socketId, position } = validation.data;
+  const result = lobbyManager.approvePendingPlayer(roomId, socketId, position as PlayerPosition);
+
+  if (!result.success) {
+    socket.emit('error', { message: result.error!, code: 'APPROVE_FAILED' });
+    return;
+  }
+
+  // Get the approved player's socket
+  const approvedSocket = io.sockets.sockets.get(socketId);
+  if (approvedSocket) {
+    // Join them to the room
+    approvedSocket.join(roomId);
+    approvedSocket.data.roomId = roomId;
+    approvedSocket.data.position = position as PlayerPosition;
+
+    // Tell them they've been approved
+    approvedSocket.emit('join-approved', { position: position as PlayerPosition });
+    approvedSocket.emit('room-joined', {
+      roomId,
+      roomName: room.name,
+      position: position as PlayerPosition,
+      players: getPlayerViews(roomId),
+    });
+  }
+
+  // Notify all players in room of the update
+  io.to(roomId).emit('room-updated', {
+    players: getPlayerViews(roomId),
+  });
+
+  // Send updated pending list to host
+  socket.emit('pending-players', { pending: lobbyManager.getPendingPlayers(roomId) });
+
+  // Broadcast updated room list to lobby
+  io.emit('lobby-state', { rooms: lobbyManager.getRoomList() });
+}
+
+/**
+ * Handle host rejecting a pending player
+ */
+function handleRejectPlayer(
+  socket: GameSocket,
+  io: GameServer,
+  data: unknown
+): void {
+  const validation = validateData(RejectPlayerSchema, data);
+  if (!validation.success) {
+    socket.emit('error', { message: `Invalid data: ${validation.error}`, code: 'VALIDATION_ERROR' });
+    return;
+  }
+
+  const roomId = socket.data.roomId;
+  if (!roomId) {
+    socket.emit('error', { message: 'Not in a room', code: 'NOT_IN_ROOM' });
+    return;
+  }
+
+  const room = lobbyManager.getRoom(roomId);
+  if (!room) {
+    socket.emit('error', { message: 'Room not found', code: 'ROOM_NOT_FOUND' });
+    return;
+  }
+
+  // Only host can reject players
+  if (room.hostId !== socket.id) {
+    socket.emit('error', { message: 'Only host can reject players', code: 'NOT_HOST' });
+    return;
+  }
+
+  const { socketId } = validation.data;
+  lobbyManager.rejectPendingPlayer(roomId, socketId);
+
+  // Notify the rejected player
+  const rejectedSocket = io.sockets.sockets.get(socketId);
+  if (rejectedSocket) {
+    rejectedSocket.emit('join-rejected', { message: 'Your request to join was declined' });
+  }
+
+  // Send updated pending list to host
+  socket.emit('pending-players', { pending: lobbyManager.getPendingPlayers(roomId) });
 }
 
 /**
@@ -555,8 +749,8 @@ async function processBotTurns(
         trickNumber: gameManager.getServerState().currentHand?.tricksPlayed ?? 0,
       });
 
-      // Add delay to show the completed trick
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Add delay to show the completed trick (+10%)
+      await new Promise((resolve) => setTimeout(resolve, 1650));
 
       if (result.handComplete) {
         const serverState = gameManager.getServerState();

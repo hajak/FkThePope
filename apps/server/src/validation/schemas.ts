@@ -107,6 +107,12 @@ export const JoinRoomSchema = z.object({
   position: PlayerPositionSchema.optional(),
 });
 
+export const RejoinRoomSchema = z.object({
+  roomId: z.string().min(1),
+  position: PlayerPositionSchema,
+  playerName: z.string().min(1).max(50).trim(),
+});
+
 export const PlayCardSchema = z.object({
   card: CardSchema,
   faceDown: z.boolean(),
@@ -122,6 +128,16 @@ export const AddBotSchema = z.object({
 
 export const RemoveBotSchema = z.object({
   position: PlayerPositionSchema,
+});
+
+// Player approval schemas
+export const ApprovePlayerSchema = z.object({
+  socketId: z.string().min(1),
+  position: PlayerPositionSchema,
+});
+
+export const RejectPlayerSchema = z.object({
+  socketId: z.string().min(1),
 });
 
 // Validation helper

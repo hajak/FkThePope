@@ -10,13 +10,12 @@ interface TrickPileProps {
 }
 
 // Visual positions for cards in the trick (relative to screen)
-// Using a 2x2 grid layout to avoid overlapping with player seats
-// Cards are 70x98px (small size) - compact grid with slight overlap
+// Using a + (cross) layout - cards are 70x98px (small size)
 const VISUAL_OFFSETS: Record<string, { x: number; y: number }> = {
-  bottom: { x: -32, y: 25 },   // Bottom-left (my card)
-  left: { x: -32, y: -25 },    // Top-left
-  top: { x: 32, y: -25 },      // Top-right
-  right: { x: 32, y: 25 },     // Bottom-right
+  bottom: { x: 0, y: 55 },     // Bottom (my card)
+  left: { x: -45, y: 0 },      // Left
+  top: { x: 0, y: -55 },       // Top
+  right: { x: 45, y: 0 },      // Right
 };
 
 // Where cards fly to when the trick is won

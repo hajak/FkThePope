@@ -37,6 +37,16 @@ function VideoPlaceholder({ stream, isMuted, isLocalPlayer }: VideoPlaceholderPr
   );
 }
 
+function BotPlaceholder() {
+  return (
+    <div className="video-placeholder bot-placeholder">
+      <div className="no-video">
+        <div className="bot-icon">🤖</div>
+      </div>
+    </div>
+  );
+}
+
 interface GameTableProps {
   players: Record<PlayerPosition, PlayerView | null>;
   currentTrick: TrickState | null;
@@ -96,12 +106,18 @@ export function GameTable({
             key={position}
             className={`seat seat-${relPos} ${isCurrentTurn ? 'current-turn' : ''}`}
           >
-            {/* Video placeholder for each seat */}
-            <VideoPlaceholder
-              stream={videoStreams?.[position]}
-              isMuted={position === myPosition ? isLocalMuted : playerMuteStatus?.[position]}
-              isLocalPlayer={position === myPosition}
-            />
+            {/* Video placeholder for humans, bot emoji for bots */}
+            {player && (
+              player.isBot ? (
+                <BotPlaceholder />
+              ) : (
+                <VideoPlaceholder
+                  stream={videoStreams?.[position]}
+                  isMuted={position === myPosition ? isLocalMuted : playerMuteStatus?.[position]}
+                  isLocalPlayer={position === myPosition}
+                />
+              )
+            )}
             {player && (
               <>
                 <div className="seat-info">

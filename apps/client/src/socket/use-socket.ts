@@ -23,6 +23,9 @@ export function useSocket() {
   const setRooms = useLobbyStore((s) => s.setRooms);
   const setCurrentRoom = useLobbyStore((s) => s.setCurrentRoom);
   const updateRoomPlayers = useLobbyStore((s) => s.updateRoomPlayers);
+  const setPendingJoin = useLobbyStore((s) => s.setPendingJoin);
+  const setPendingPlayers = useLobbyStore((s) => s.setPendingPlayers);
+  const addPendingPlayer = useLobbyStore((s) => s.addPendingPlayer);
 
   const showToast = useUiStore((s) => s.showToast);
   const setConnectionState = useUiStore((s) => s.setConnectionState);
@@ -82,7 +85,33 @@ export function useSocket() {
     socket.on('room-left', () => {
       reset();
       setCurrentRoom(null);
+      setPendingJoin(null);
       clearSession();
+    });
+
+    // Player approval events
+    socket.on('join-requested', ({ roomId, roomName }) => {
+      setPendingJoin({ roomId, roomName });
+      showToast(`Waiting for host to approve your join request...`, 'info');
+    });
+
+    socket.on('join-request', ({ pending }) => {
+      addPendingPlayer(pending);
+      showToast(`${pending.playerName} wants to join!`, 'info');
+    });
+
+    socket.on('pending-players', ({ pending }) => {
+      setPendingPlayers(pending);
+    });
+
+    socket.on('join-approved', ({ position }) => {
+      setPendingJoin(null);
+      showToast(`You've been approved! Playing as ${position}`, 'success');
+    });
+
+    socket.on('join-rejected', ({ message }) => {
+      setPendingJoin(null);
+      showToast(message, 'error');
     });
 
     // Game events
@@ -146,11 +175,11 @@ export function useSocket() {
       // Start the trick animation
       startTrickAnimation(winner);
 
-      // Clear preservation after animation completes (matches animation timing)
+      // Clear preservation after animation completes (matches animation timing +10%)
       setTimeout(() => {
         isAnimatingRef.current = false;
         clearPreservedTrick();
-      }, 2000);
+      }, 2200);
     });
 
     socket.on('hand-complete', ({ winner, tricks }) => {
@@ -186,6 +215,11 @@ export function useSocket() {
       socket.off('room-joined');
       socket.off('room-updated');
       socket.off('room-left');
+      socket.off('join-requested');
+      socket.off('join-request');
+      socket.off('pending-players');
+      socket.off('join-approved');
+      socket.off('join-rejected');
       socket.off('game-started');
       socket.off('game-state');
       socket.off('hand-started');
@@ -260,6 +294,18 @@ export function useGameActions() {
     getSocket().emit('continue-game');
   }, []);
 
+  const approvePlayer = useCallback((socketId: string, position: PlayerPosition) => {
+    getSocket().emit('approve-player', { socketId, position });
+  }, []);
+
+  const rejectPlayer = useCallback((socketId: string) => {
+    getSocket().emit('reject-player', { socketId });
+  }, []);
+
+  const cancelJoinRequest = useCallback(() => {
+    useLobbyStore.getState().setPendingJoin(null);
+  }, []);
+
   return {
     joinLobby,
     createRoom,
@@ -270,5 +316,8 @@ export function useGameActions() {
     addBot,
     removeBot,
     continueGame,
+    approvePlayer,
+    rejectPlayer,
+    cancelJoinRequest,
   };
 }

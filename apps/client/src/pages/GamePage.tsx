@@ -5,6 +5,7 @@ import { useVideoStore } from '../stores/video-store';
 import { GameTable } from '../components/layout/GameTable';
 import { Hand } from '../components/cards/Hand';
 import { HandResultModal } from '../components/modals/HandResultModal';
+import { RulesPanel } from '../components/rules/RulesPanel';
 import type { Card, PlayerPosition } from '@fkthepope/shared';
 import './GamePage.css';
 
@@ -92,7 +93,7 @@ export function GamePage() {
             <span className="stat-label">Trick {currentTrick?.trickNumber ?? '-'}/13</span>
           </div>
           {trumpSuit && (
-            <div className="trump-badge">
+            <div className={`trump-badge trump-${trumpSuit}`}>
               <span className={`trump-icon suit-${trumpSuit}`}>
                 {trumpSuit === 'hearts' ? '♥' : trumpSuit === 'diamonds' ? '♦' : trumpSuit === 'clubs' ? '♣' : '♠'}
               </span>
@@ -194,6 +195,9 @@ export function GamePage() {
 
       {/* Hand result modal */}
       <HandResultModal />
+
+      {/* Rules panel */}
+      <RulesPanel trumpSuit={trumpSuit} />
     </div>
   );
 }

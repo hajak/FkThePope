@@ -22,6 +22,7 @@ export function LobbyPage() {
   const initialRoomName = useMemo(() => generateRoomName(), []);
   const [roomName, setRoomName] = useState(initialRoomName);
   const [hasJoinedLobby, setHasJoinedLobby] = useState(false);
+  const [selectedPosition, setSelectedPosition] = useState<PlayerPosition | null>(null);
 
   const isConnected = useGameStore((s) => s.isConnected);
   const storedName = useGameStore((s) => s.playerName);
@@ -29,8 +30,10 @@ export function LobbyPage() {
 
   const rooms = useLobbyStore((s) => s.rooms);
   const currentRoom = useLobbyStore((s) => s.currentRoom);
+  const pendingJoin = useLobbyStore((s) => s.pendingJoin);
+  const pendingPlayers = useLobbyStore((s) => s.pendingPlayers);
 
-  const { joinLobby, createRoom, joinRoom, leaveRoom, startGame, addBot } = useGameActions();
+  const { joinLobby, createRoom, joinRoom, leaveRoom, startGame, addBot, approvePlayer, rejectPlayer, cancelJoinRequest } = useGameActions();
 
   const handleJoinLobby = () => {
     if (playerName.trim()) {
@@ -99,10 +102,27 @@ export function LobbyPage() {
     );
   }
 
+  // Pending join screen (waiting for host approval)
+  if (pendingJoin) {
+    return (
+      <div className="lobby-page">
+        <div className="lobby-card pending-card">
+          <h2>Joining: {pendingJoin.roomName}</h2>
+          <div className="pending-spinner"></div>
+          <p className="pending-message">Waiting for the host to accept your request...</p>
+          <button className="btn-secondary" onClick={cancelJoinRequest}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Room waiting screen
   if (currentRoom) {
     const positions: PlayerPosition[] = ['north', 'east', 'south', 'west'];
     const filledPositions = currentRoom.players.filter(Boolean).length;
+    const availablePositions = positions.filter((_, idx) => !currentRoom.players[idx]);
 
     return (
       <div className="lobby-page">
@@ -132,6 +152,50 @@ export function LobbyPage() {
               );
             })}
           </div>
+
+          {/* Pending players section for host */}
+          {pendingPlayers.length > 0 && (
+            <div className="pending-players-section">
+              <h3>Players Waiting to Join</h3>
+              {pendingPlayers.map((pending) => (
+                <div key={pending.socketId} className="pending-player-item">
+                  <span className="pending-player-name">{pending.playerName}</span>
+                  <div className="pending-player-actions">
+                    <select
+                      className="position-select"
+                      value={selectedPosition || ''}
+                      onChange={(e) => setSelectedPosition(e.target.value as PlayerPosition)}
+                    >
+                      <option value="">Select position</option>
+                      {availablePositions.map((pos) => (
+                        <option key={pos} value={pos}>
+                          {pos.charAt(0).toUpperCase() + pos.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="btn-primary btn-small"
+                      onClick={() => {
+                        if (selectedPosition) {
+                          approvePlayer(pending.socketId, selectedPosition);
+                          setSelectedPosition(null);
+                        }
+                      }}
+                      disabled={!selectedPosition}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      className="btn-danger btn-small"
+                      onClick={() => rejectPlayer(pending.socketId)}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="room-actions">
             <button className="btn-secondary" onClick={leaveRoom}>

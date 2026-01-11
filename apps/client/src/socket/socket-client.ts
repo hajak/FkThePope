@@ -63,12 +63,15 @@ export function getSocket(): GameSocket {
       notifyConnectionChange(true);
 
       // Re-join room if we were in one
-      const storedRoom = sessionStorage.getItem('fkthepope_room');
-      const storedName = sessionStorage.getItem('fkthepope_name');
-
-      if (storedRoom && storedName) {
-        socket?.emit('join-lobby', { playerName: storedName });
-        // Room rejoin will be handled by the server via session recovery
+      const session = getStoredSession();
+      if (session.roomId && session.playerName && session.position) {
+        socket?.emit('join-lobby', { playerName: session.playerName });
+        // Try to rejoin the room at the same position
+        socket?.emit('rejoin-room', {
+          roomId: session.roomId,
+          position: session.position as 'north' | 'east' | 'south' | 'west',
+          playerName: session.playerName,
+        });
       }
     });
 
@@ -100,31 +103,31 @@ export function getReconnectAttempts(): number {
   return reconnectAttempts;
 }
 
-// Store session info for reconnection
+// Store session info for reconnection (use localStorage for persistence)
 export function storeSession(roomId: string | null, position: string | null, playerName: string): void {
   if (roomId) {
-    sessionStorage.setItem('fkthepope_room', roomId);
+    localStorage.setItem('whist_room', roomId);
   } else {
-    sessionStorage.removeItem('fkthepope_room');
+    localStorage.removeItem('whist_room');
   }
   if (position) {
-    sessionStorage.setItem('fkthepope_position', position);
+    localStorage.setItem('whist_position', position);
   } else {
-    sessionStorage.removeItem('fkthepope_position');
+    localStorage.removeItem('whist_position');
   }
-  sessionStorage.setItem('fkthepope_name', playerName);
+  localStorage.setItem('whist_name', playerName);
 }
 
 export function clearSession(): void {
-  sessionStorage.removeItem('fkthepope_room');
-  sessionStorage.removeItem('fkthepope_position');
-  sessionStorage.removeItem('fkthepope_name');
+  localStorage.removeItem('whist_room');
+  localStorage.removeItem('whist_position');
+  localStorage.removeItem('whist_name');
 }
 
 export function getStoredSession(): { roomId: string | null; position: string | null; playerName: string | null } {
   return {
-    roomId: sessionStorage.getItem('fkthepope_room'),
-    position: sessionStorage.getItem('fkthepope_position'),
-    playerName: sessionStorage.getItem('fkthepope_name'),
+    roomId: localStorage.getItem('whist_room'),
+    position: localStorage.getItem('whist_position'),
+    playerName: localStorage.getItem('whist_name'),
   };
 }

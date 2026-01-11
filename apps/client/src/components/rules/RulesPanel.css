@@ -1,0 +1,117 @@
+.rules-panel {
+  position: fixed;
+  right: 20px;
+  top: 80px;
+  width: 240px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 8px;
+  padding: 16px;
+  color: var(--color-text);
+  font-size: 12px;
+  z-index: 10;
+}
+
+/* Trump Display */
+.trump-display {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.trump-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+
+.trump-suit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.trump-symbol {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.trump-name {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Trump colors */
+.trump-hearts .trump-symbol,
+.trump-hearts .trump-name {
+  color: #e74c3c;
+}
+
+.trump-diamonds .trump-symbol,
+.trump-diamonds .trump-name {
+  color: #e74c3c;
+}
+
+.trump-clubs .trump-symbol,
+.trump-clubs .trump-name {
+  color: #fff;
+}
+
+.trump-spades .trump-symbol,
+.trump-spades .trump-name {
+  color: #fff;
+}
+
+.rules-panel h3 {
+  font-size: 14px;
+  margin-bottom: 12px;
+  color: var(--color-accent);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+}
+
+.rules-section {
+  margin-bottom: 12px;
+}
+
+.rules-section h4 {
+  font-size: 12px;
+  color: var(--color-text);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.rules-section p {
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.rules-section ul {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.rules-section li {
+  margin-bottom: 2px;
+}
+
+.rules-section strong {
+  color: var(--color-text);
+}
+
+/* Hide on smaller screens */
+@media (max-width: 1100px) {
+  .rules-panel {
+    display: none;
+  }
+}

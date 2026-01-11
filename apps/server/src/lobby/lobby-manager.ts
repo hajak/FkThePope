@@ -1,4 +1,4 @@
-import type { PlayerPosition, RoomInfo } from '@fkthepope/shared';
+import type { PlayerPosition, RoomInfo, PendingPlayer } from '@fkthepope/shared';
 import { PLAYER_POSITIONS, BOT_NAMES } from '@fkthepope/shared';
 import { nanoid, playerId } from '@fkthepope/game-engine';
 
@@ -22,6 +22,7 @@ export interface Room {
   name: string;
   hostId: string;
   players: Map<PlayerPosition, RoomPlayer>;
+  pendingPlayers: Map<string, PendingPlayer>; // socketId -> PendingPlayer
   status: 'waiting' | 'playing';
   createdAt: number;
 }
@@ -45,6 +46,7 @@ export class LobbyManager {
       name,
       hostId: hostSocketId,
       players: new Map(),
+      pendingPlayers: new Map(),
       status: 'waiting',
       createdAt: Date.now(),
     };
@@ -285,5 +287,171 @@ export class LobbyManager {
       }
     }
     return undefined;
+  }
+
+  /**
+   * Update a player's socket ID when they reconnect
+   */
+  updatePlayerSocket(
+    roomId: string,
+    position: PlayerPosition,
+    newSocketId: string,
+    playerName: string
+  ): { success: boolean; error?: string; player?: RoomPlayer } {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return { success: false, error: 'Room not found' };
+    }
+
+    const player = room.players.get(position);
+    if (!player) {
+      return { success: false, error: 'Position not occupied' };
+    }
+
+    // Verify player name matches (security check)
+    if (player.name !== playerName) {
+      return { success: false, error: 'Player name mismatch' };
+    }
+
+    // Don't allow updating bot sockets
+    if (player.isBot) {
+      return { success: false, error: 'Cannot rejoin as bot' };
+    }
+
+    // Remove old socket mapping
+    this.playerRooms.delete(player.socketId);
+
+    // Update socket ID
+    player.socketId = newSocketId;
+    this.playerRooms.set(newSocketId, roomId);
+
+    // Update host if this was the host
+    if (room.hostId === player.socketId) {
+      room.hostId = newSocketId;
+    }
+
+    return { success: true, player };
+  }
+
+  /**
+   * Find a player by name in a room (for reconnection)
+   */
+  findPlayerByName(roomId: string, playerName: string): { position: PlayerPosition; player: RoomPlayer } | undefined {
+    const room = this.rooms.get(roomId);
+    if (!room) return undefined;
+
+    for (const [position, player] of room.players) {
+      if (player.name === playerName && !player.isBot) {
+        return { position, player };
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Add a player to the pending list for a room
+   */
+  addPendingPlayer(
+    roomId: string,
+    socketId: string,
+    playerName: string
+  ): { success: boolean; error?: string; pending?: PendingPlayer } {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return { success: false, error: 'Room not found' };
+    }
+
+    if (room.status === 'playing') {
+      return { success: false, error: 'Game already in progress' };
+    }
+
+    // Check if player is already pending
+    if (room.pendingPlayers.has(socketId)) {
+      return { success: false, error: 'Already waiting for approval' };
+    }
+
+    // Check if room has space
+    const availablePositions = PLAYER_POSITIONS.filter(pos => !room.players.has(pos));
+    if (availablePositions.length === 0) {
+      return { success: false, error: 'Room is full' };
+    }
+
+    const pending: PendingPlayer = {
+      socketId,
+      playerName,
+      requestedAt: Date.now(),
+    };
+
+    room.pendingPlayers.set(socketId, pending);
+    return { success: true, pending };
+  }
+
+  /**
+   * Approve a pending player and add them to the room
+   */
+  approvePendingPlayer(
+    roomId: string,
+    socketId: string,
+    position: PlayerPosition
+  ): { success: boolean; error?: string; player?: RoomPlayer } {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return { success: false, error: 'Room not found' };
+    }
+
+    const pending = room.pendingPlayers.get(socketId);
+    if (!pending) {
+      return { success: false, error: 'Player not found in pending list' };
+    }
+
+    // Check if position is available
+    if (room.players.has(position)) {
+      return { success: false, error: 'Position is already taken' };
+    }
+
+    // Remove from pending and add to players
+    room.pendingPlayers.delete(socketId);
+
+    const player: RoomPlayer = {
+      id: playerId(),
+      socketId,
+      name: pending.playerName,
+      position,
+      isBot: false,
+      isReady: false,
+    };
+
+    room.players.set(position, player);
+    this.playerRooms.set(socketId, roomId);
+
+    return { success: true, player };
+  }
+
+  /**
+   * Reject a pending player
+   */
+  rejectPendingPlayer(roomId: string, socketId: string): boolean {
+    const room = this.rooms.get(roomId);
+    if (!room) return false;
+
+    return room.pendingPlayers.delete(socketId);
+  }
+
+  /**
+   * Get pending players for a room
+   */
+  getPendingPlayers(roomId: string): PendingPlayer[] {
+    const room = this.rooms.get(roomId);
+    if (!room) return [];
+    return Array.from(room.pendingPlayers.values());
+  }
+
+  /**
+   * Remove a player from pending (e.g., when they disconnect)
+   */
+  removePendingPlayer(socketId: string): void {
+    for (const room of this.rooms.values()) {
+      room.pendingPlayers.delete(socketId);
+    }
   }
 }
