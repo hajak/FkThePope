@@ -2,16 +2,18 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
 }
 
-/* Game Header */
+/* Game Header - Clean and minimal */
 .game-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 24px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-primary);
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .game-logo {
@@ -45,7 +47,7 @@
   justify-content: center;
   font-weight: bold;
   font-size: 14px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .logo-card.red {
@@ -62,114 +64,142 @@
   z-index: 2;
 }
 
-.game-stats {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.stat-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--color-text-muted);
-  font-size: 14px;
-}
-
-.stat-label {
-  font-weight: 500;
-}
-
-.stat-divider {
-  opacity: 0.4;
-}
-
+/* Trump Badge - Centered, prominent */
 .trump-badge {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 20px;
+  gap: 10px;
+  padding: 10px 20px;
+  border-radius: 25px;
   border: 2px solid;
+  font-weight: 600;
 }
 
-/* Red suits */
-.trump-badge.trump-hearts,
-.trump-badge.trump-diamonds {
-  background: rgba(231, 76, 60, 0.2);
-  border-color: #e74c3c;
-}
-
-/* Black suits */
-.trump-badge.trump-clubs,
-.trump-badge.trump-spades {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.5);
+.trump-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
 }
 
 .trump-icon {
-  font-size: 20px;
+  font-size: 24px;
 }
 
-.trump-name {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.trump-icon.suit-hearts,
-.trump-name.suit-hearts,
-.trump-icon.suit-diamonds,
-.trump-name.suit-diamonds {
+/* Trump colors */
+.trump-badge.trump-hearts,
+.trump-badge.trump-diamonds {
+  background: rgba(231, 76, 60, 0.15);
+  border-color: rgba(231, 76, 60, 0.6);
   color: #e74c3c;
 }
 
-.trump-icon.suit-clubs,
-.trump-name.suit-clubs,
-.trump-icon.suit-spades,
-.trump-name.suit-spades {
-  color: #ffffff;
+.trump-badge.trump-clubs,
+.trump-badge.trump-spades {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
 }
 
-.score-display {
+/* Header Controls - Right side */
+.header-controls {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 6px 14px;
-  border-radius: 20px;
 }
 
-.score-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
+.header-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.score-value {
+.header-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.header-btn.icon-btn {
+  padding: 8px 12px;
   font-size: 16px;
-  font-weight: 700;
-  color: var(--color-accent);
 }
 
+.header-btn.icon-btn.off {
+  background: rgba(231, 76, 60, 0.2);
+  border-color: rgba(231, 76, 60, 0.5);
+}
+
+.header-btn.stop-btn {
+  color: #e74c3c;
+  border-color: rgba(231, 76, 60, 0.5);
+}
+
+.header-btn.stop-btn:hover {
+  background: rgba(231, 76, 60, 0.2);
+}
+
+.video-controls-inline {
+  display: flex;
+  gap: 4px;
+}
+
+.video-start-btn {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: rgba(76, 175, 80, 0.5);
+  color: #4caf50;
+}
+
+.video-start-btn:hover {
+  background: rgba(76, 175, 80, 0.3);
+}
+
+.stats-btn {
+  background: rgba(100, 181, 246, 0.15);
+  border-color: rgba(100, 181, 246, 0.4);
+  color: #64b5f6;
+}
+
+.stats-btn:hover {
+  background: rgba(100, 181, 246, 0.25);
+}
+
+.quit-btn {
+  background: rgba(231, 76, 60, 0.15);
+  border-color: rgba(231, 76, 60, 0.4);
+  color: #e74c3c;
+}
+
+.quit-btn:hover {
+  background: rgba(231, 76, 60, 0.25);
+}
+
+/* Table area */
 .table-area {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px 20px 10px;
+  padding: 20px;
 }
 
+/* Hand area */
 .hand-area {
-  padding: 10px 20px 15px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.3), transparent);
+  padding: 10px 20px 20px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .play-actions-container {
-  min-height: 44px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -180,104 +210,154 @@
   gap: 12px;
 }
 
+.play-btn {
+  padding: 12px 32px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 25px;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
 .play-actions-placeholder {
   color: var(--color-text-muted);
   font-size: 14px;
-  padding: 8px 16px;
+  padding: 12px 24px;
 }
 
 .waiting-message {
   color: var(--color-text-muted);
   font-size: 14px;
-  padding: 8px 16px;
+  padding: 10px 20px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Video controls - top left corner */
-.video-controls {
+/* Modal styles */
+.modal-overlay {
   position: fixed;
-  top: 80px;
-  left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 100;
-}
-
-.video-controls-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--color-text-muted);
-  margin-bottom: 4px;
-}
-
-.video-controls-buttons {
-  display: flex;
-  gap: 8px;
-}
-
-/* Quit button - top left, below video controls */
-.quit-btn {
-  position: fixed;
-  top: 160px;
-  left: 20px;
-  padding: 8px 16px;
-  background: rgba(231, 76, 60, 0.2);
-  border: 1px solid #e74c3c;
-  border-radius: 6px;
-  color: #e74c3c;
-  font-size: 12px;
-  cursor: pointer;
-  z-index: 100;
-  transition: all 0.2s ease;
-}
-
-.quit-btn:hover {
-  background: rgba(231, 76, 60, 0.4);
-}
-
-.video-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--color-surface);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-content h2 {
+  margin: 0 0 24px;
+  font-size: 24px;
+  text-align: center;
+  color: var(--color-text);
+}
+
+.modal-content p {
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.modal-actions button {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+}
+
+/* Stats Modal */
+.stats-modal {
+  max-width: 450px;
+}
+
+.stats-table {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-text-muted);
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stats-row:last-child {
+  border-bottom: none;
+}
+
+.stats-row.my-row {
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.stats-name {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.stats-score {
+  font-weight: 700;
   font-size: 18px;
+  color: var(--color-accent);
+}
+
+.stats-modal .btn-primary {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+}
+
+/* Quit Modal */
+.quit-modal {
+  text-align: center;
+}
+
+.btn-danger {
+  background: #e74c3c;
+  color: white;
+  border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s;
 }
 
-.video-btn.start {
-  width: auto;
-  border-radius: 22px;
-  padding: 0 16px;
-  font-size: 14px;
+.btn-danger:hover {
+  background: #c0392b;
 }
 
-.video-btn.off {
-  background: rgba(231, 76, 60, 0.2);
-  border-color: #e74c3c;
-  color: #e74c3c;
-}
-
-.video-btn.stop {
-  background: rgba(231, 76, 60, 0.2);
-  border-color: #e74c3c;
-  color: #e74c3c;
-  width: auto;
-  border-radius: 22px;
-  padding: 0 16px;
-  font-size: 14px;
-}
-
-.video-btn:hover {
-  transform: scale(1.05);
-}
-
-/* Responsive styles for smaller screens (MBA 13", etc.) */
+/* Responsive styles */
 @media (max-height: 800px) {
   .game-header {
     padding: 8px 16px;
@@ -287,20 +367,27 @@
     font-size: 16px;
   }
 
+  .trump-badge {
+    padding: 8px 14px;
+  }
+
+  .trump-icon {
+    font-size: 20px;
+  }
+
   .table-area {
     padding: 10px 15px 5px;
   }
 
   .hand-area {
-    padding: 5px 15px 10px;
-    gap: 5px;
+    padding: 5px 15px 15px;
+    gap: 8px;
   }
 
   .hand {
     min-height: 140px;
   }
 
-  /* Smaller cards in hand */
   .hand .card-medium {
     width: 90px;
     height: 126px;
@@ -316,12 +403,12 @@
   }
 
   .play-actions-container {
-    min-height: 36px;
+    min-height: 40px;
   }
 
-  .btn-primary {
-    padding: 8px 16px;
-    font-size: 13px;
+  .play-btn {
+    padding: 10px 24px;
+    font-size: 14px;
   }
 }
 
@@ -345,3 +432,25 @@
   }
 }
 
+@media (max-width: 768px) {
+  .game-header {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 16px;
+  }
+
+  .trump-badge {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .header-controls {
+    gap: 6px;
+  }
+
+  .header-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}

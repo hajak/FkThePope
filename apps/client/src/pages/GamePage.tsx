@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { useGameStore, useMyHand, useLegalMoves, useIsMyTurn, useTrumpSuit, useCurrentTrick } from '../stores/game-store';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useGameStore, useMyHand, useLegalMoves, useIsMyTurn, useTrumpSuit, useCurrentTrick, useScores } from '../stores/game-store';
 import { useGameActions } from '../socket/use-socket';
 import { useVideoStore } from '../stores/video-store';
 import { GameTable } from '../components/layout/GameTable';
@@ -21,8 +21,13 @@ export function GamePage() {
   const isMyTurn = useIsMyTurn();
   const trumpSuit = useTrumpSuit();
   const currentTrick = useCurrentTrick();
+  const scores = useScores();
 
   const { playCard, leaveRoom } = useGameActions();
+
+  // UI state
+  const [showStats, setShowStats] = useState(false);
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
 
   // Video state
   const localStream = useVideoStore((s) => s.localStream);
@@ -90,10 +95,18 @@ export function GamePage() {
     }
   };
 
+  const handleQuit = () => {
+    setShowQuitConfirm(false);
+    leaveRoom();
+  };
+
+
+  // Get player names for stats display
+  const playerNames = gameState.players;
 
   return (
     <div className="game-page">
-      {/* Game header */}
+      {/* Game header - simplified */}
       <header className="game-header">
         <div className="game-logo">
           <span className="logo-cards">
@@ -102,26 +115,69 @@ export function GamePage() {
           </span>
           <h1>Whist Online</h1>
         </div>
-        <div className="game-stats">
-          <div className="stat-group">
-            <span className="stat-label">Hand {gameState.currentHand?.number ?? '-'}</span>
-            <span className="stat-divider">|</span>
-            <span className="stat-label">Trick {currentTrick?.trickNumber ?? '-'}/13</span>
+
+        {/* Trump suit display */}
+        {trumpSuit && (
+          <div className={`trump-badge trump-${trumpSuit}`}>
+            <span className="trump-label">Trump</span>
+            <span className={`trump-icon suit-${trumpSuit}`}>
+              {trumpSuit === 'hearts' ? '♥' : trumpSuit === 'diamonds' ? '♦' : trumpSuit === 'clubs' ? '♣' : '♠'}
+            </span>
           </div>
-          {trumpSuit && (
-            <div className={`trump-badge trump-${trumpSuit}`}>
-              <span className={`trump-icon suit-${trumpSuit}`}>
-                {trumpSuit === 'hearts' ? '♥' : trumpSuit === 'diamonds' ? '♦' : trumpSuit === 'clubs' ? '♣' : '♠'}
-              </span>
-              <span className={`trump-name suit-${trumpSuit}`}>
-                {trumpSuit.charAt(0).toUpperCase() + trumpSuit.slice(1)}
-              </span>
+        )}
+
+        {/* Top right controls */}
+        <div className="header-controls">
+          <button
+            className="header-btn stats-btn"
+            onClick={() => setShowStats(true)}
+            title="View game statistics"
+          >
+            Stats
+          </button>
+
+          {/* Video controls */}
+          {localStream ? (
+            <div className="video-controls-inline">
+              <button
+                className={`header-btn icon-btn ${!isVideoEnabled ? 'off' : ''}`}
+                onClick={toggleVideo}
+                title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
+              >
+                {isVideoEnabled ? '📹' : '📷'}
+              </button>
+              <button
+                className={`header-btn icon-btn ${!isAudioEnabled ? 'off' : ''}`}
+                onClick={toggleAudio}
+                title={isAudioEnabled ? 'Mute' : 'Unmute'}
+              >
+                {isAudioEnabled ? '🎤' : '🔇'}
+              </button>
+              <button
+                className="header-btn icon-btn stop-btn"
+                onClick={stopVideo}
+                title="End video"
+              >
+                ✕
+              </button>
             </div>
+          ) : (
+            <button
+              className="header-btn video-start-btn"
+              onClick={startVideo}
+              title="Start video call"
+            >
+              Start Video
+            </button>
           )}
-          <div className="score-display">
-            <span className="score-label">Score</span>
-            <span className="score-value">{gameState.scores[myPosition] ?? 0}</span>
-          </div>
+
+          <button
+            className="header-btn quit-btn"
+            onClick={() => setShowQuitConfirm(true)}
+            title="Leave game"
+          >
+            Quit
+          </button>
         </div>
       </header>
 
@@ -139,51 +195,6 @@ export function GamePage() {
         />
       </div>
 
-      {/* Video controls */}
-      <div className="video-controls">
-        <span className="video-controls-label">Video controls</span>
-        <div className="video-controls-buttons">
-          {localStream ? (
-            <>
-              <button
-                className={`btn-secondary video-btn ${!isVideoEnabled ? 'off' : ''}`}
-                onClick={toggleVideo}
-                title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
-              >
-                {isVideoEnabled ? '📹' : '📷'}
-              </button>
-              <button
-                className={`btn-secondary video-btn ${!isAudioEnabled ? 'off' : ''}`}
-                onClick={toggleAudio}
-                title={isAudioEnabled ? 'Mute' : 'Unmute'}
-              >
-                {isAudioEnabled ? '🎤' : '🔇'}
-              </button>
-              <button
-                className="btn-secondary video-btn stop"
-                onClick={stopVideo}
-                title="Stop video call"
-              >
-                End
-              </button>
-            </>
-          ) : (
-            <button
-              className="btn-primary video-btn start"
-              onClick={startVideo}
-              title="Start video call"
-            >
-              Start Video
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Quit button */}
-      <button className="quit-btn" onClick={leaveRoom} title="Leave game">
-        Quit
-      </button>
-
       {/* Player hand */}
       <div className="hand-area">
         <Hand
@@ -194,15 +205,15 @@ export function GamePage() {
           isMyTurn={isMyTurn}
         />
 
-        {/* Play buttons - always reserve space */}
+        {/* Play buttons */}
         <div className="play-actions-container">
           {selectedCard && isMyTurn ? (
             <div className="play-actions">
               <button
-                className="btn-primary"
+                className="btn-primary play-btn"
                 onClick={() => handlePlayCard(false)}
               >
-                Play
+                Play Card
               </button>
             </div>
           ) : !isMyTurn ? (
@@ -222,6 +233,55 @@ export function GamePage() {
 
       {/* Rules panel */}
       <RulesPanel trumpSuit={trumpSuit} />
+
+      {/* Stats Modal */}
+      {showStats && (
+        <div className="modal-overlay" onClick={() => setShowStats(false)}>
+          <div className="modal-content stats-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Game Statistics</h2>
+            <div className="stats-table">
+              <div className="stats-header">
+                <span>Player</span>
+                <span>Hands Won</span>
+              </div>
+              {(['north', 'east', 'south', 'west'] as PlayerPosition[]).map((pos) => {
+                const player = playerNames[pos];
+                if (!player) return null;
+                return (
+                  <div key={pos} className={`stats-row ${pos === myPosition ? 'my-row' : ''}`}>
+                    <span className="stats-name">
+                      {player.name}
+                      {pos === myPosition && ' (You)'}
+                    </span>
+                    <span className="stats-score">{scores[pos]}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <button className="btn-primary" onClick={() => setShowStats(false)}>
+              Back to Game
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Quit Confirmation Modal */}
+      {showQuitConfirm && (
+        <div className="modal-overlay" onClick={() => setShowQuitConfirm(false)}>
+          <div className="modal-content quit-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Leave Game?</h2>
+            <p>Are you sure you want to quit? You will return to the lobby.</p>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setShowQuitConfirm(false)}>
+                Cancel
+              </button>
+              <button className="btn-danger" onClick={handleQuit}>
+                Quit Game
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
