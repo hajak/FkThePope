@@ -51,6 +51,6 @@ if (isProduction) {
 setupSocketHandlers(io);
 
 httpServer.listen(PORT, () => {
-  console.log(`FkThePope server running on port ${PORT}`);
+  console.log(`Online Whist server running on port ${PORT}`);
   console.log(`Environment: ${isProduction ? 'production' : 'development'}`);
 });

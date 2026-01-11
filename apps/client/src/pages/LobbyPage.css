@@ -148,6 +148,10 @@
   padding: 16px;
   border-radius: 8px;
   text-align: center;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .room-seat.filled {

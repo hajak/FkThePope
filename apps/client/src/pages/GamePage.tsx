@@ -123,7 +123,7 @@ export function GamePage() {
               <span className={`trump-icon suit-${trumpSuit}`}>
                 {trumpSuit === 'hearts' ? '♥' : trumpSuit === 'diamonds' ? '♦' : trumpSuit === 'clubs' ? '♣' : '♠'}
               </span>
-              <span className={`trump-text suit-${trumpSuit}`}>Trump</span>
+              <span className={`trump-text suit-${trumpSuit}`}>Trump suit</span>
             </div>
           )}
         </div>

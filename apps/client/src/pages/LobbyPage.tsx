@@ -7,14 +7,14 @@ import './LobbyPage.css';
 
 // Word lists for random room names
 const adjectives = ['Swift', 'Bold', 'Clever', 'Mighty', 'Noble', 'Royal', 'Lucky', 'Wild', 'Bright', 'Grand', 'Silent', 'Golden', 'Silver', 'Hidden', 'Ancient'];
-const nouns = ['Kings', 'Queens', 'Knights', 'Dragons', 'Wizards', 'Ravens', 'Wolves', 'Eagles', 'Lions', 'Tigers', 'Phoenix', 'Foxes', 'Owls', 'Bears', 'Hawks'];
+const nouns = ['King', 'Queen', 'Knight', 'Dragon', 'Wizard', 'Raven', 'Wolf', 'Eagle', 'Lion', 'Tiger', 'Phoenix', 'Fox', 'Owl', 'Bear', 'Hawk'];
 const places = ['Table', 'Court', 'Tower', 'Hall', 'Chamber', 'Den', 'Throne', 'Castle', 'Palace', 'Arena', 'Garden', 'Lodge', 'Keep', 'Lair', 'Sanctum'];
 
 function generateRoomName(): string {
   const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
   const noun = nouns[Math.floor(Math.random() * nouns.length)];
   const place = places[Math.floor(Math.random() * places.length)];
-  return `${adj} ${noun} ${place}`;
+  return `${adj} ${noun}'s ${place}`;
 }
 
 export function LobbyPage() {
