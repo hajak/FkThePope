@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { RoomInfo, PlayerView, PendingPlayer } from '@fkthepope/shared';
+import type { RoomInfo, PlayerView, PendingPlayer, ChatMessage } from '@fkthepope/shared';
 
 interface LobbyStore {
   // Room list
@@ -21,6 +21,9 @@ interface LobbyStore {
   // Pending players (for hosts to approve/reject)
   pendingPlayers: PendingPlayer[];
 
+  // Chat messages
+  chatMessages: ChatMessage[];
+
   // Actions
   setRooms: (rooms: RoomInfo[]) => void;
   setCurrentRoom: (room: { id: string; name: string; players: Array<PlayerView | null> } | null) => void;
@@ -29,6 +32,8 @@ interface LobbyStore {
   setPendingPlayers: (pending: PendingPlayer[]) => void;
   addPendingPlayer: (pending: PendingPlayer) => void;
   removePendingPlayer: (socketId: string) => void;
+  addChatMessage: (message: ChatMessage) => void;
+  clearChatMessages: () => void;
 }
 
 export const useLobbyStore = create<LobbyStore>((set) => ({
@@ -36,6 +41,7 @@ export const useLobbyStore = create<LobbyStore>((set) => ({
   currentRoom: null,
   pendingJoin: null,
   pendingPlayers: [],
+  chatMessages: [],
 
   setRooms: (rooms) => set({ rooms }),
 
@@ -61,4 +67,11 @@ export const useLobbyStore = create<LobbyStore>((set) => ({
     set((state) => ({
       pendingPlayers: state.pendingPlayers.filter((p) => p.socketId !== socketId),
     })),
+
+  addChatMessage: (message) =>
+    set((state) => ({
+      chatMessages: [...state.chatMessages.slice(-49), message], // Keep last 50 messages
+    })),
+
+  clearChatMessages: () => set({ chatMessages: [] }),
 }));

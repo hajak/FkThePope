@@ -125,6 +125,21 @@ export function setupSocketHandlers(io: GameServer): void {
         socket.to(roomId).emit('player-mute-status', { player: position, isMuted });
       }
     });
+
+    // Chat - broadcast to all players in room (including sender)
+    socket.on('chat-message', ({ message }) => {
+      const roomId = socket.data.roomId;
+      const playerName = socket.data.playerName;
+      if (roomId && message.trim()) {
+        const chatMessage = {
+          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          playerName,
+          message: message.trim().slice(0, 200), // Limit message length
+          timestamp: Date.now(),
+        };
+        io.to(roomId).emit('room-chat', { message: chatMessage });
+      }
+    });
   });
 }
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useGameStore } from '../stores/game-store';
 import { useLobbyStore } from '../stores/lobby-store';
 import { useGameActions } from '../socket/use-socket';
@@ -32,8 +32,26 @@ export function LobbyPage() {
   const currentRoom = useLobbyStore((s) => s.currentRoom);
   const pendingJoin = useLobbyStore((s) => s.pendingJoin);
   const pendingPlayers = useLobbyStore((s) => s.pendingPlayers);
+  const chatMessages = useLobbyStore((s) => s.chatMessages);
 
-  const { joinLobby, createRoom, joinRoom, leaveRoom, startGame, addBot, approvePlayer, rejectPlayer, cancelJoinRequest } = useGameActions();
+  const { joinLobby, createRoom, joinRoom, leaveRoom, startGame, addBot, approvePlayer, rejectPlayer, cancelJoinRequest, sendChatMessage } = useGameActions();
+
+  const [chatInput, setChatInput] = useState('');
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll chat to bottom when new messages arrive
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
+
+  const handleSendChat = () => {
+    if (chatInput.trim()) {
+      sendChatMessage(chatInput);
+      setChatInput('');
+    }
+  };
 
   const handleJoinLobby = () => {
     if (playerName.trim()) {
@@ -81,8 +99,9 @@ export function LobbyPage() {
               type="text"
               placeholder="Enter your name"
               value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
+              onChange={(e) => setPlayerName(e.target.value.slice(0, 20))}
               onKeyPress={(e) => e.key === 'Enter' && handleJoinLobby()}
+              maxLength={20}
               disabled={!isConnected}
             />
             <button
@@ -196,6 +215,36 @@ export function LobbyPage() {
               ))}
             </div>
           )}
+
+          {/* Chat section */}
+          <div className="room-chat">
+            <h3>Chat</h3>
+            <div className="chat-messages" ref={chatContainerRef}>
+              {chatMessages.length === 0 ? (
+                <p className="chat-empty">No messages yet. Say hello!</p>
+              ) : (
+                chatMessages.map((msg) => (
+                  <div key={msg.id} className="chat-message">
+                    <span className="chat-sender">{msg.playerName}:</span>
+                    <span className="chat-text">{msg.message}</span>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="chat-input-row">
+              <input
+                type="text"
+                placeholder="Type a message..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value.slice(0, 200))}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendChat()}
+                maxLength={200}
+              />
+              <button className="btn-primary" onClick={handleSendChat} disabled={!chatInput.trim()}>
+                Send
+              </button>
+            </div>
+          </div>
 
           <div className="room-actions">
             <button className="btn-secondary" onClick={leaveRoom}>

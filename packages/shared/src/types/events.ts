@@ -40,6 +40,16 @@ export interface PendingPlayer {
 }
 
 /**
+ * Chat message
+ */
+export interface ChatMessage {
+  id: string;
+  playerName: string;
+  message: string;
+  timestamp: number;
+}
+
+/**
  * Events sent from client to server
  */
 export type ClientToServerEvents = {
@@ -75,6 +85,9 @@ export type ClientToServerEvents = {
 
   // Audio/Video status
   'mute-status': (data: { isMuted: boolean }) => void;
+
+  // Chat
+  'chat-message': (data: { message: string }) => void;
 };
 
 /**
@@ -129,6 +142,9 @@ export type ServerToClientEvents = {
 
   // Audio/Video status
   'player-mute-status': (data: { player: PlayerPosition; isMuted: boolean }) => void;
+
+  // Chat
+  'room-chat': (data: { message: ChatMessage }) => void;
 };
 
 /**

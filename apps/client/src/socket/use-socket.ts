@@ -26,6 +26,8 @@ export function useSocket() {
   const setPendingJoin = useLobbyStore((s) => s.setPendingJoin);
   const setPendingPlayers = useLobbyStore((s) => s.setPendingPlayers);
   const addPendingPlayer = useLobbyStore((s) => s.addPendingPlayer);
+  const addChatMessage = useLobbyStore((s) => s.addChatMessage);
+  const clearChatMessages = useLobbyStore((s) => s.clearChatMessages);
 
   const showToast = useUiStore((s) => s.showToast);
   const setConnectionState = useUiStore((s) => s.setConnectionState);
@@ -86,7 +88,13 @@ export function useSocket() {
       reset();
       setCurrentRoom(null);
       setPendingJoin(null);
+      clearChatMessages();
       clearSession();
+    });
+
+    // Chat events
+    socket.on('room-chat', ({ message }) => {
+      addChatMessage(message);
     });
 
     // Player approval events
@@ -236,6 +244,7 @@ export function useSocket() {
       socket.off('webrtc-answer');
       socket.off('webrtc-ice-candidate');
       socket.off('player-mute-status');
+      socket.off('room-chat');
       unsubscribeConnection();
       cleanup();
       useVideoStore.getState().cleanup();
@@ -309,6 +318,12 @@ export function useGameActions() {
     useLobbyStore.getState().setPendingJoin(null);
   }, []);
 
+  const sendChatMessage = useCallback((message: string) => {
+    if (message.trim()) {
+      getSocket().emit('chat-message', { message: message.trim() });
+    }
+  }, []);
+
   return {
     joinLobby,
     createRoom,
@@ -322,5 +337,6 @@ export function useGameActions() {
     approvePlayer,
     rejectPlayer,
     cancelJoinRequest,
+    sendChatMessage,
   };
 }

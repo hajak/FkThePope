@@ -200,8 +200,42 @@
   top: 80px;
   left: 20px;
   display: flex;
+  flex-direction: column;
   gap: 8px;
   z-index: 100;
+}
+
+.video-controls-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.video-controls-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* Quit button - top left, below video controls */
+.quit-btn {
+  position: fixed;
+  top: 160px;
+  left: 20px;
+  padding: 8px 16px;
+  background: rgba(231, 76, 60, 0.2);
+  border: 1px solid #e74c3c;
+  border-radius: 6px;
+  color: #e74c3c;
+  font-size: 12px;
+  cursor: pointer;
+  z-index: 100;
+  transition: all 0.2s ease;
+}
+
+.quit-btn:hover {
+  background: rgba(231, 76, 60, 0.4);
 }
 
 .video-btn {

@@ -22,7 +22,7 @@ export function GamePage() {
   const trumpSuit = useTrumpSuit();
   const currentTrick = useCurrentTrick();
 
-  const { playCard } = useGameActions();
+  const { playCard, leaveRoom } = useGameActions();
 
   // Video state
   const localStream = useVideoStore((s) => s.localStream);
@@ -141,40 +141,48 @@ export function GamePage() {
 
       {/* Video controls */}
       <div className="video-controls">
-        {localStream ? (
-          <>
+        <span className="video-controls-label">Video controls</span>
+        <div className="video-controls-buttons">
+          {localStream ? (
+            <>
+              <button
+                className={`btn-secondary video-btn ${!isVideoEnabled ? 'off' : ''}`}
+                onClick={toggleVideo}
+                title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
+              >
+                {isVideoEnabled ? '📹' : '📷'}
+              </button>
+              <button
+                className={`btn-secondary video-btn ${!isAudioEnabled ? 'off' : ''}`}
+                onClick={toggleAudio}
+                title={isAudioEnabled ? 'Mute' : 'Unmute'}
+              >
+                {isAudioEnabled ? '🎤' : '🔇'}
+              </button>
+              <button
+                className="btn-secondary video-btn stop"
+                onClick={stopVideo}
+                title="Stop video call"
+              >
+                End
+              </button>
+            </>
+          ) : (
             <button
-              className={`btn-secondary video-btn ${!isVideoEnabled ? 'off' : ''}`}
-              onClick={toggleVideo}
-              title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
+              className="btn-primary video-btn start"
+              onClick={startVideo}
+              title="Start video call"
             >
-              {isVideoEnabled ? '📹' : '📷'}
+              Start Video
             </button>
-            <button
-              className={`btn-secondary video-btn ${!isAudioEnabled ? 'off' : ''}`}
-              onClick={toggleAudio}
-              title={isAudioEnabled ? 'Mute' : 'Unmute'}
-            >
-              {isAudioEnabled ? '🎤' : '🔇'}
-            </button>
-            <button
-              className="btn-secondary video-btn stop"
-              onClick={stopVideo}
-              title="Stop video call"
-            >
-              End
-            </button>
-          </>
-        ) : (
-          <button
-            className="btn-primary video-btn start"
-            onClick={startVideo}
-            title="Start video call"
-          >
-            Start Video
-          </button>
-        )}
+          )}
+        </div>
       </div>
+
+      {/* Quit button */}
+      <button className="quit-btn" onClick={leaveRoom} title="Leave game">
+        Quit
+      </button>
 
       {/* Player hand */}
       <div className="hand-area">
