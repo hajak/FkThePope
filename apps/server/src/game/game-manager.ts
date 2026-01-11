@@ -289,7 +289,7 @@ export class GameManager {
   }
 
   /**
-   * Get a bot's move (simple AI: random legal card)
+   * Get a bot's move using strategic AI
    */
   getBotMove(position: PlayerPosition): { card: Card; faceDown: boolean } | null {
     const player = this.state.players[position];
@@ -298,28 +298,191 @@ export class GameManager {
     const currentTrick = this.state.currentHand?.currentTrick;
     if (!currentTrick) return null;
 
-    // Get legal moves from base rules
+    const hand = player.hand;
     const trumpSuit = this.state.currentHand!.trumpSuit;
     const leadSuit = currentTrick.leadSuit;
+    const playedCards = currentTrick.cards;
 
-    let legalCards = player.hand;
+    // Helper: get rank value for comparison
+    const rankValue = (card: Card): number => {
+      const values: Record<string, number> = {
+        '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8,
+        '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14,
+      };
+      return values[card.rank] ?? 0;
+    };
 
-    // If there's a lead suit, must follow if possible
-    if (leadSuit) {
-      const suitCards = player.hand.filter((c) => c.suit === leadSuit);
-      if (suitCards.length > 0) {
-        legalCards = suitCards;
+    // Helper: sort cards by rank (lowest first)
+    const sortByRankAsc = (cards: Card[]): Card[] =>
+      [...cards].sort((a, b) => rankValue(a) - rankValue(b));
+
+    // Helper: sort cards by rank (highest first)
+    const sortByRankDesc = (cards: Card[]): Card[] =>
+      [...cards].sort((a, b) => rankValue(b) - rankValue(a));
+
+    // Helper: get cards of a suit
+    const cardsOfSuit = (cards: Card[], suit: Suit): Card[] =>
+      cards.filter((c) => c.suit === suit);
+
+    // Helper: get current winning card info from played cards
+    const getCurrentWinner = (): { card: Card; isTrump: boolean } | null => {
+      if (playedCards.length === 0) return null;
+      const eligible = playedCards.filter((pc) => !pc.faceDown);
+      if (eligible.length === 0) return null;
+
+      // Check for trump
+      const trumpPlayed = eligible.filter((pc) => pc.card.suit === trumpSuit);
+      if (trumpPlayed.length > 0) {
+        const highestTrump = trumpPlayed.reduce((h, c) =>
+          rankValue(c.card) > rankValue(h.card) ? c : h
+        );
+        return { card: highestTrump.card, isTrump: true };
       }
+
+      // Highest of lead suit
+      const leadCards = eligible.filter((pc) => pc.card.suit === leadSuit);
+      if (leadCards.length > 0) {
+        const highestLead = leadCards.reduce((h, c) =>
+          rankValue(c.card) > rankValue(h.card) ? c : h
+        );
+        return { card: highestLead.card, isTrump: false };
+      }
+
+      return null;
+    };
+
+    // Helper: check if a card would win
+    const wouldWin = (card: Card): boolean => {
+      const current = getCurrentWinner();
+      if (!current) return true; // First to play always "wins" so far
+
+      // If current winner is trump
+      if (current.isTrump) {
+        // Need higher trump to win
+        return card.suit === trumpSuit && rankValue(card) > rankValue(current.card);
+      }
+
+      // Current winner is lead suit
+      // Trump always beats non-trump
+      if (card.suit === trumpSuit) return true;
+
+      // Same suit - need higher rank
+      if (card.suit === leadSuit) {
+        return rankValue(card) > rankValue(current.card);
+      }
+
+      // Off-suit non-trump cannot win
+      return false;
+    };
+
+    // Helper: get lowest card that wins
+    const getLowestWinningCard = (cards: Card[]): Card | null => {
+      const winners = cards.filter((c) => wouldWin(c));
+      if (winners.length === 0) return null;
+      return sortByRankAsc(winners)[0]!;
+    };
+
+    // Helper: get lowest card overall
+    const getLowestCard = (cards: Card[]): Card =>
+      sortByRankAsc(cards)[0]!;
+
+    // Helper: get highest card overall
+    const getHighestCard = (cards: Card[]): Card =>
+      sortByRankDesc(cards)[0]!;
+
+    // Helper: get best discard (lowest, prefer short suits, avoid trump)
+    const getBestDiscard = (cards: Card[]): Card => {
+      // Group by suit
+      const bySuit: Record<Suit, Card[]> = {
+        hearts: [], diamonds: [], clubs: [], spades: [],
+      };
+      for (const c of cards) {
+        bySuit[c.suit].push(c);
+      }
+
+      // Prefer non-trump, then shortest suit, then lowest card
+      const nonTrump = cards.filter((c) => c.suit !== trumpSuit);
+      const pool = nonTrump.length > 0 ? nonTrump : cards;
+
+      // Find shortest suit among pool
+      let shortest: Card[] = pool;
+      let shortestLen = 14;
+      for (const suit of ['hearts', 'diamonds', 'clubs', 'spades'] as Suit[]) {
+        if (suit === trumpSuit && nonTrump.length > 0) continue;
+        const suitCards = pool.filter((c) => c.suit === suit);
+        if (suitCards.length > 0 && suitCards.length < shortestLen) {
+          shortest = suitCards;
+          shortestLen = suitCards.length;
+        }
+      }
+
+      return getLowestCard(shortest.length > 0 ? shortest : pool);
+    };
+
+    // CASE 1: LEADING (first to play)
+    if (!leadSuit) {
+      const nonTrump = hand.filter((c) => c.suit !== trumpSuit);
+      const trumpCards = cardsOfSuit(hand, trumpSuit);
+
+      // Find longest non-trump suit
+      let longestSuit: Suit | null = null;
+      let longestLen = 0;
+      for (const suit of ['hearts', 'diamonds', 'clubs', 'spades'] as Suit[]) {
+        if (suit === trumpSuit) continue;
+        const count = cardsOfSuit(hand, suit).length;
+        if (count > longestLen) {
+          longestLen = count;
+          longestSuit = suit;
+        }
+      }
+
+      // Lead highest from longest non-trump suit
+      if (longestSuit && longestLen >= 2) {
+        const suitCards = cardsOfSuit(hand, longestSuit);
+        return { card: getHighestCard(suitCards), faceDown: false };
+      }
+
+      // If no good non-trump suit and have 4+ trumps, lead highest trump
+      if (trumpCards.length >= 4) {
+        return { card: getHighestCard(trumpCards), faceDown: false };
+      }
+
+      // Otherwise lead highest card available
+      return { card: getHighestCard(hand), faceDown: false };
     }
 
-    // Pick a random legal card
-    const card = legalCards[Math.floor(Math.random() * legalCards.length)]!;
+    // CASE 2: FOLLOWING SUIT (have cards of lead suit)
+    const followCards = cardsOfSuit(hand, leadSuit);
+    if (followCards.length > 0) {
+      // Can we win cheaply?
+      const lowestWinner = getLowestWinningCard(followCards);
+      if (lowestWinner) {
+        return { card: lowestWinner, faceDown: false };
+      }
+      // Cannot win - play lowest
+      return { card: getLowestCard(followCards), faceDown: false };
+    }
 
-    // Decide face-down: only if void in lead suit and not leading
-    const faceDown = leadSuit !== null &&
-      !player.hand.some((c) => c.suit === leadSuit) &&
-      card.suit !== trumpSuit;
+    // CASE 3: VOID IN SUIT
+    const trumpCards = cardsOfSuit(hand, trumpSuit);
 
-    return { card, faceDown: false }; // Bots play face-up for simplicity
+    // Check if anyone has played trump
+    const currentWinner = getCurrentWinner();
+    const trumpAlreadyPlayed = currentWinner?.isTrump ?? false;
+
+    // If we have trump
+    if (trumpCards.length > 0) {
+      // Can we win with trump?
+      const lowestWinningTrump = getLowestWinningCard(trumpCards);
+      if (lowestWinningTrump) {
+        // Trump only if it will win
+        return { card: lowestWinningTrump, faceDown: false };
+      }
+      // Cannot win with trump - discard instead
+      // (Don't waste trump on a losing play)
+    }
+
+    // Discard: use best discard strategy
+    return { card: getBestDiscard(hand), faceDown: false };
   }
 }
