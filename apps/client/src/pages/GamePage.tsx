@@ -230,7 +230,7 @@ export function GamePage() {
             </div>
           ) : !isMyTurn ? (
             <div className="waiting-message">
-              Waiting for {waitingFor}...
+              Waiting for {waitingFor && gameState.players[waitingFor]?.name || waitingFor}...
             </div>
           ) : (
             <div className="play-actions-placeholder">
@@ -253,19 +253,22 @@ export function GamePage() {
                 <span>Player</span>
                 <span>Hands Won</span>
               </div>
-              {(['north', 'east', 'south', 'west'] as PlayerPosition[]).map((pos) => {
-                const player = playerNames[pos];
-                if (!player) return null;
-                return (
-                  <div key={pos} className={`stats-row ${pos === myPosition ? 'my-row' : ''}`}>
-                    <span className="stats-name">
-                      {player.name}
-                      {pos === myPosition && ' (You)'}
-                    </span>
-                    <span className="stats-score">{scores[pos]}</span>
-                  </div>
-                );
-              })}
+              {(['north', 'east', 'south', 'west'] as PlayerPosition[])
+                .filter((pos) => playerNames[pos])
+                .sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0))
+                .map((pos) => {
+                  const player = playerNames[pos];
+                  if (!player) return null;
+                  return (
+                    <div key={pos} className={`stats-row ${pos === myPosition ? 'my-row' : ''}`}>
+                      <span className="stats-name">
+                        {player.name}
+                        {pos === myPosition && ' (You)'}
+                      </span>
+                      <span className="stats-score">{scores[pos]}</span>
+                    </div>
+                  );
+                })}
             </div>
             <button className="btn-primary" onClick={() => setShowStats(false)}>
               Back to Game
