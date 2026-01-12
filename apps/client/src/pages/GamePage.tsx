@@ -230,7 +230,7 @@ export function GamePage() {
             </div>
           ) : !isMyTurn ? (
             <div className="waiting-message">
-              Waiting for {waitingFor && gameState.players[waitingFor]?.name || waitingFor}...
+              Waiting for {waitingFor ? (gameState.players[waitingFor]?.name || 'other player') : 'other player'}...
             </div>
           ) : (
             <div className="play-actions-placeholder">
