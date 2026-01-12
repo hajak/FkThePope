@@ -151,9 +151,10 @@ export function LobbyPage() {
           <div className="room-players">
             {positions.map((pos, idx) => {
               const player = currentRoom.players[idx];
+              const seatLabel = `Seat ${idx + 1}`;
               return (
                 <div key={pos} className={`room-seat ${player ? 'filled' : 'empty'}`}>
-                  <span className="seat-position">{pos}</span>
+                  <span className="seat-position">{seatLabel}</span>
                   {player ? (
                     <span className="seat-name">
                       {player.name}
@@ -185,12 +186,15 @@ export function LobbyPage() {
                       value={selectedPosition || ''}
                       onChange={(e) => setSelectedPosition(e.target.value as PlayerPosition)}
                     >
-                      <option value="">Select position</option>
-                      {availablePositions.map((pos) => (
-                        <option key={pos} value={pos}>
-                          {pos.charAt(0).toUpperCase() + pos.slice(1)}
-                        </option>
-                      ))}
+                      <option value="">Select seat</option>
+                      {availablePositions.map((pos) => {
+                        const seatNum = positions.indexOf(pos) + 1;
+                        return (
+                          <option key={pos} value={pos}>
+                            Seat {seatNum}
+                          </option>
+                        );
+                      })}
                     </select>
                     <button
                       className="btn-primary btn-small"

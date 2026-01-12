@@ -16,20 +16,22 @@ export function HandResultModal() {
   const { winner, tricks } = handResult;
   const isWinner = winner === myPosition;
   const winnerTricks = tricks[winner] ?? 0;
-  const winnerName = players?.[winner]?.name ?? winner;
   const positions: PlayerPosition[] = ['north', 'east', 'south', 'west'];
+
+  const getPlayerName = (pos: PlayerPosition) => {
+    const player = players?.[pos];
+    const seatNum = positions.indexOf(pos) + 1;
+    if (!player) return `Seat ${seatNum}`;
+    if (pos === myPosition) return `${player.name} (You)`;
+    return player.name;
+  };
+
+  const winnerName = getPlayerName(winner);
 
   // Sort positions by tricks won (descending)
   const sortedPositions = [...positions].sort(
     (a, b) => (tricks[b] ?? 0) - (tricks[a] ?? 0)
   );
-
-  const getPlayerName = (pos: PlayerPosition) => {
-    const player = players?.[pos];
-    if (!player) return pos;
-    if (pos === myPosition) return `${player.name} (You)`;
-    return player.name;
-  };
 
   const handleContinue = () => {
     continueGame();
