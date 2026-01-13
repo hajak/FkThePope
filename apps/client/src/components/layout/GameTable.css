@@ -322,3 +322,105 @@
     height: 42px;
   }
 }
+
+/* iPhone and small mobile devices */
+@media (max-width: 400px) {
+  .game-table {
+    height: 280px;
+    border-radius: 80px / 50px;
+    border-width: 2px;
+  }
+
+  .seat {
+    padding: 4px;
+    gap: 2px;
+    min-width: 100px;
+  }
+
+  .seat-top {
+    top: 5px;
+  }
+
+  .seat-bottom {
+    bottom: -8px;
+  }
+
+  .seat-left {
+    left: 8px;
+  }
+
+  .seat-right {
+    right: 8px;
+  }
+
+  .seat-info {
+    padding: 3px 6px;
+    min-width: 60px;
+  }
+
+  .seat-name {
+    font-size: 10px;
+    max-width: 80px;
+  }
+
+  .seat-tricks {
+    font-size: 9px;
+  }
+
+  .video-placeholder {
+    width: 45px;
+    height: 34px;
+    border-width: 1px;
+  }
+
+  .video-placeholder .video-icon {
+    font-size: 16px;
+  }
+
+  .video-placeholder .bot-icon {
+    font-size: 20px;
+  }
+
+  /* Hide card count on very small screens */
+  .card-count {
+    display: none;
+  }
+
+  .mini-card {
+    margin-left: -18px;
+  }
+}
+
+/* Landscape on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .game-table {
+    height: 220px;
+    border-radius: 100px / 50px;
+    border-width: 2px;
+    max-width: 600px;
+  }
+
+  .seat {
+    padding: 3px;
+    gap: 2px;
+    min-width: 80px;
+  }
+
+  .seat-info {
+    padding: 2px 4px;
+    min-width: 50px;
+  }
+
+  .seat-name {
+    font-size: 9px;
+  }
+
+  .seat-tricks {
+    font-size: 8px;
+  }
+
+  .video-placeholder {
+    width: 40px;
+    height: 30px;
+  }
+}

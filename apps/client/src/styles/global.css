@@ -17,6 +17,12 @@
   --card-width: 120px;
   --card-height: 168px;
   --card-radius: 12px;
+
+  /* Safe area insets for iPhone notch/home indicator */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
 * {
@@ -46,6 +52,9 @@ button {
   font-size: 14px;
   font-weight: 500;
   transition: all 0.2s ease;
+  /* Ensure minimum touch target size on mobile */
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button:disabled {

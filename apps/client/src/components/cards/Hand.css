@@ -4,11 +4,16 @@
   padding: 10px;
   perspective: 1000px;
   min-height: 180px; /* Prevent layout shift when hand is empty */
+  /* Allow horizontal scroll on very small screens */
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
 }
 
 .hand-card {
   margin-left: -30px;
   transition: margin 0.2s ease;
+  flex-shrink: 0;
 }
 
 .hand-card:first-child {
@@ -21,6 +26,25 @@
 
 .hand:hover .hand-card:first-child {
   margin-left: 0;
+}
+
+/* Touch devices - always spread cards since there's no hover */
+@media (pointer: coarse) {
+  .hand-card {
+    margin-left: -25px;
+  }
+
+  .hand-card:first-child {
+    margin-left: 0;
+  }
+
+  .hand:hover .hand-card {
+    margin-left: -25px;
+  }
+
+  .hand:hover .hand-card:first-child {
+    margin-left: 0;
+  }
 }
 
 /* Card deal animation */

@@ -30,6 +30,7 @@ export function GamePage() {
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // Settings state
   const cardSize = useSettingsStore((s) => s.cardSize);
@@ -138,6 +139,16 @@ export function GamePage() {
 
         {/* Top right controls */}
         <div className="header-controls">
+          {/* Mobile menu button - visible only on mobile */}
+          <button
+            className="mobile-menu-btn"
+            onClick={() => setShowMobileMenu(true)}
+            title="Menu"
+            aria-label="Open menu"
+          >
+            ☰
+          </button>
+
           <button
             className="header-btn stats-btn"
             onClick={() => setShowStats(true)}
@@ -350,7 +361,7 @@ export function GamePage() {
               </div>
             </div>
 
-            <div className="version-info">Version 1.2.0</div>
+            <div className="version-info">Version 1.3.0</div>
 
             <button className="btn-primary" onClick={() => setShowRules(false)}>
               Back to Game
@@ -409,6 +420,83 @@ export function GamePage() {
           </div>
         </div>
       )}
+
+      {/* Mobile Menu Overlay */}
+      <div className={`mobile-menu-overlay ${showMobileMenu ? 'open' : ''}`}>
+        <button
+          className="menu-close"
+          onClick={() => setShowMobileMenu(false)}
+          aria-label="Close menu"
+        >
+          ✕
+        </button>
+        <button
+          className="menu-item stats-btn"
+          onClick={() => {
+            setShowMobileMenu(false);
+            setShowStats(true);
+          }}
+        >
+          Stats
+        </button>
+        <button
+          className="menu-item rules-btn"
+          onClick={() => {
+            setShowMobileMenu(false);
+            setShowRules(true);
+          }}
+        >
+          Rules
+        </button>
+        <button
+          className="menu-item settings-btn"
+          onClick={() => {
+            setShowMobileMenu(false);
+            setShowSettings(true);
+          }}
+        >
+          Settings
+        </button>
+        {!localStream ? (
+          <button
+            className="menu-item video-start-btn"
+            onClick={() => {
+              setShowMobileMenu(false);
+              startVideo();
+            }}
+          >
+            Start Video
+          </button>
+        ) : (
+          <>
+            <button
+              className={`menu-item ${!isVideoEnabled ? 'off' : ''}`}
+              onClick={() => {
+                toggleVideo();
+              }}
+            >
+              {isVideoEnabled ? 'Turn Off Camera' : 'Turn On Camera'}
+            </button>
+            <button
+              className={`menu-item ${!isAudioEnabled ? 'off' : ''}`}
+              onClick={() => {
+                toggleAudio();
+              }}
+            >
+              {isAudioEnabled ? 'Mute' : 'Unmute'}
+            </button>
+            <button
+              className="menu-item stop-btn"
+              onClick={() => {
+                setShowMobileMenu(false);
+                stopVideo();
+              }}
+            >
+              End Video
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

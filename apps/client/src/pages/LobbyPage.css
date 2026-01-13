@@ -745,3 +745,182 @@
     gap: 8px;
   }
 }
+
+/* Mobile iPhone specific */
+@media (max-width: 480px) {
+  .lobby-page {
+    padding: 12px;
+    padding-top: calc(12px + var(--safe-area-top));
+    padding-bottom: calc(12px + var(--safe-area-bottom));
+    padding-left: calc(12px + var(--safe-area-left));
+    padding-right: calc(12px + var(--safe-area-right));
+  }
+
+  .lobby-card {
+    padding: 20px 16px;
+    border-radius: 14px;
+  }
+
+  /* Smaller decorative corners on mobile */
+  .lobby-card::before,
+  .lobby-card::after {
+    width: 40px;
+    height: 40px;
+  }
+
+  .lobby-card::before {
+    top: 10px;
+    left: 10px;
+  }
+
+  .lobby-card::after {
+    bottom: 10px;
+    right: 10px;
+  }
+
+  .lobby-logo {
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .lobby-logo h1 {
+    font-size: 1.5rem;
+  }
+
+  .lobby-logo .logo-cards {
+    width: 44px;
+    height: 38px;
+  }
+
+  .lobby-logo .logo-card {
+    width: 28px;
+    height: 38px;
+    font-size: 18px;
+  }
+
+  .lobby-logo .logo-card.black {
+    left: 16px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  .lobby-instructions {
+    padding: 14px;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .instruction-item {
+    font-size: 12px;
+    gap: 10px;
+  }
+
+  .instruction-icon {
+    font-size: 16px;
+    width: 24px;
+  }
+
+  .name-form input,
+  .create-room input {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .name-form .btn-primary,
+  .create-room .btn-primary {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+
+  .room-card {
+    padding: 20px 16px;
+  }
+
+  .room-card h2 {
+    font-size: 1.2rem;
+  }
+
+  .room-seat {
+    height: 100px;
+    padding: 14px;
+  }
+
+  .seat-avatar {
+    font-size: 24px;
+  }
+
+  .seat-name {
+    font-size: 13px;
+  }
+
+  .add-bot-btn {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+
+  .invite-section {
+    padding: 12px;
+  }
+
+  .invite-link-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .invite-link-input {
+    font-size: 12px;
+    padding: 10px 12px;
+  }
+
+  .copy-link-btn {
+    padding: 10px 16px;
+  }
+
+  .room-actions {
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .room-actions .btn-secondary,
+  .room-actions .btn-primary {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+
+  /* Chat on mobile */
+  .room-chat {
+    padding: 14px;
+  }
+
+  .chat-messages {
+    height: 100px;
+    padding: 10px;
+  }
+
+  .chat-input-row input {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .chat-input-row button {
+    padding: 10px 14px;
+  }
+}
+
+/* Touch device specific for lobby */
+@media (pointer: coarse) {
+  .room-item:active {
+    transform: scale(0.98);
+  }
+
+  .add-bot-btn:active {
+    transform: scale(0.95);
+  }
+
+  .copy-link-btn:active {
+    transform: scale(0.95);
+  }
+}
