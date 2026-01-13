@@ -1146,56 +1146,55 @@
 /* Mobile landscape - optimized for touch play */
 @media screen and (max-width: 1024px) and (orientation: landscape) {
   .game-page.is-mobile {
-    flex-direction: row;
+    flex-direction: column;
     height: 100vh;
     height: 100dvh;
+    overflow: hidden;
   }
 
   .game-page.is-mobile .game-header {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 10;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(5px);
+    flex-shrink: 0;
+    padding: 2px 8px;
+    background: rgba(0, 0, 0, 0.6);
   }
 
   .game-page.is-mobile .table-area {
     flex: 1;
-    padding: 40px 10px 10px;
-    padding-left: calc(10px + env(safe-area-inset-left));
-    padding-right: calc(10px + env(safe-area-inset-right));
+    padding: 4px;
+    padding-left: calc(4px + env(safe-area-inset-left));
+    padding-right: calc(4px + env(safe-area-inset-right));
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .game-page.is-mobile .hand-area {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 8px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    flex-shrink: 0;
+    padding: 2px 8px;
+    padding-bottom: calc(4px + env(safe-area-inset-bottom));
     padding-left: calc(8px + env(safe-area-inset-left));
     padding-right: calc(8px + env(safe-area-inset-right));
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+    background: rgba(0, 0, 0, 0.4);
     min-height: auto;
+    max-height: 90px;
   }
 
   .game-page.is-mobile .hand {
     min-height: auto;
-    padding: 4px;
+    padding: 2px;
   }
 
-  /* Larger, more spread cards in landscape */
+  /* Compact cards for landscape - fits 13 cards */
   .game-page.is-mobile .hand .card-medium {
-    width: 65px;
-    height: 91px;
-    font-size: 12px;
-    border-radius: 6px;
+    width: 44px;
+    height: 62px;
+    font-size: 9px;
+    border-radius: 4px;
   }
 
   .game-page.is-mobile .hand-card {
-    margin-left: -30px;
+    margin-left: -24px;
   }
 
   .game-page.is-mobile .hand-card:first-child {
@@ -1204,12 +1203,19 @@
 
   /* Play button positioning */
   .game-page.is-mobile .play-actions-container {
-    min-height: auto;
-    margin-bottom: 4px;
+    min-height: 28px;
+    margin-bottom: 2px;
   }
 
   .game-page.is-mobile .play-btn {
-    padding: 10px 24px;
-    font-size: 14px;
+    padding: 6px 16px;
+    font-size: 12px;
+    min-height: 28px;
+  }
+
+  .game-page.is-mobile .waiting-message,
+  .game-page.is-mobile .play-actions-placeholder {
+    font-size: 10px;
+    padding: 4px 8px;
   }
 }

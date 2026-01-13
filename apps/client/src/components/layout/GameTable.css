@@ -440,33 +440,49 @@
 /* Landscape on mobile - optimized for touch */
 @media screen and (max-width: 1024px) and (orientation: landscape) {
   .game-table {
-    width: 85%;
-    height: 70%;
-    max-height: 280px;
-    border-radius: 100px / 50px;
+    width: 95%;
+    height: 100%;
+    max-height: 200px;
+    border-radius: 80px / 40px;
     border-width: 2px;
-    max-width: 700px;
+    max-width: 600px;
   }
 
   .seat {
-    padding: 4px;
-    gap: 2px;
-    min-width: 80px;
+    padding: 2px;
+    gap: 1px;
+    min-width: 60px;
+  }
+
+  .seat-top {
+    top: 4px;
+  }
+
+  .seat-bottom {
+    bottom: 4px;
+  }
+
+  .seat-left {
+    left: 8px;
+  }
+
+  .seat-right {
+    right: 8px;
   }
 
   .seat-info {
-    padding: 4px 8px;
-    min-width: 60px;
-    background: rgba(0, 0, 0, 0.8);
+    padding: 2px 6px;
+    min-width: 50px;
+    background: rgba(0, 0, 0, 0.85);
   }
 
   .seat-name {
-    font-size: 11px;
+    font-size: 9px;
     font-weight: 600;
   }
 
   .seat-tricks {
-    font-size: 10px;
+    font-size: 8px;
   }
 
   .video-placeholder {

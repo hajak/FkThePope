@@ -34,10 +34,12 @@
   }
 }
 
-/* Mobile landscape - good size for center cards */
+/* Mobile landscape - compact center cards */
 @media screen and (max-width: 1024px) and (orientation: landscape) {
   .trick-pile {
-    transform: scale(0.75);
+    transform: scale(0.55);
+    width: 140px;
+    height: 130px;
   }
 }
 
