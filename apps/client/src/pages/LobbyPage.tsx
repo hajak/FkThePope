@@ -94,6 +94,21 @@ export function LobbyPage() {
           </div>
           <p className="subtitle">Classic 4-player trick-taking card game</p>
 
+          <div className="lobby-instructions">
+            <div className="instruction-item">
+              <span className="instruction-icon">🃏</span>
+              <span>Follow suit or play trump to win tricks</span>
+            </div>
+            <div className="instruction-item">
+              <span className="instruction-icon">🏆</span>
+              <span>Win the most tricks to score points</span>
+            </div>
+            <div className="instruction-item">
+              <span className="instruction-icon">👥</span>
+              <span>Play with friends or add bots</span>
+            </div>
+          </div>
+
           <div className="name-form">
             <input
               type="text"
@@ -146,7 +161,8 @@ export function LobbyPage() {
     return (
       <div className="lobby-page">
         <div className="lobby-card room-card">
-          <h2>Room: {currentRoom.name}</h2>
+          <h2>{currentRoom.name}</h2>
+          <p className="room-subtitle">Fill all 4 seats to start the game</p>
 
           <div className="room-players">
             {positions.map((pos, idx) => {
@@ -155,19 +171,24 @@ export function LobbyPage() {
               return (
                 <div key={pos} className={`room-seat ${player ? 'filled' : 'empty'}`}>
                   <span className="seat-position">{seatLabel}</span>
-                  {player ? (
-                    <span className="seat-name">
-                      {player.name}
-                      {player.isBot && ' (Bot)'}
-                    </span>
-                  ) : (
-                    <button
-                      className="btn-secondary add-bot-btn"
-                      onClick={() => handleAddBot(pos)}
-                    >
-                      + Add Bot
-                    </button>
-                  )}
+                  <div className="seat-content">
+                    {player ? (
+                      <>
+                        <span className="seat-avatar">{player.isBot ? '🤖' : '👤'}</span>
+                        <span className="seat-name">{player.name}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="seat-avatar empty-avatar">?</span>
+                        <button
+                          className="add-bot-btn"
+                          onClick={() => handleAddBot(pos)}
+                        >
+                          + Add Bot
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               );
             })}
