@@ -690,8 +690,18 @@ function handleApprovePlayer(
     return;
   }
 
-  const { socketId, position } = validation.data;
-  const result = lobbyManager.approvePendingPlayer(roomId, socketId, position as PlayerPosition);
+  const { socketId } = validation.data;
+
+  // Find first available position
+  const positions: PlayerPosition[] = ['north', 'east', 'south', 'west'];
+  const availablePosition = positions.find(pos => !room.players.has(pos));
+
+  if (!availablePosition) {
+    socket.emit('error', { message: 'Room is full', code: 'ROOM_FULL' });
+    return;
+  }
+
+  const result = lobbyManager.approvePendingPlayer(roomId, socketId, availablePosition);
 
   if (!result.success) {
     socket.emit('error', { message: result.error!, code: 'APPROVE_FAILED' });
@@ -704,14 +714,14 @@ function handleApprovePlayer(
     // Join them to the room
     approvedSocket.join(roomId);
     approvedSocket.data.roomId = roomId;
-    approvedSocket.data.position = position as PlayerPosition;
+    approvedSocket.data.position = availablePosition;
 
     // Tell them they've been approved
-    approvedSocket.emit('join-approved', { position: position as PlayerPosition });
+    approvedSocket.emit('join-approved', { position: availablePosition });
     approvedSocket.emit('room-joined', {
       roomId,
       roomName: room.name,
-      position: position as PlayerPosition,
+      position: availablePosition,
       players: getPlayerViews(roomId),
       isHost: false, // Approved players are never host
     });

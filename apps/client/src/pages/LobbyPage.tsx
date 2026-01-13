@@ -24,14 +24,13 @@ function generateRoomName(): string {
   return `${adj} ${noun}'s ${place}`;
 }
 
-const APP_VERSION = '1.21';
+const APP_VERSION = '1.22';
 
 export function LobbyPage() {
   const [playerName, setPlayerName] = useState('');
   const initialRoomName = useMemo(() => generateRoomName(), []);
   const [roomName, setRoomName] = useState(initialRoomName);
   const [hasJoinedLobby, setHasJoinedLobby] = useState(false);
-  const [selectedPosition, setSelectedPosition] = useState<PlayerPosition | null>(null);
 
   const isConnected = useGameStore((s) => s.isConnected);
   const storedName = useGameStore((s) => s.playerName);
@@ -256,7 +255,6 @@ export function LobbyPage() {
   if (currentRoom) {
     const positions: PlayerPosition[] = ['north', 'east', 'south', 'west'];
     const filledPositions = currentRoom.players.filter(Boolean).length;
-    const availablePositions = positions.filter((_, idx) => !currentRoom.players[idx]);
 
     return (
       <div className="lobby-page">
@@ -323,30 +321,9 @@ export function LobbyPage() {
                 <div key={pending.socketId} className="pending-player-item">
                   <span className="pending-player-name">{pending.playerName}</span>
                   <div className="pending-player-actions">
-                    <select
-                      className="position-select"
-                      value={selectedPosition || ''}
-                      onChange={(e) => setSelectedPosition(e.target.value as PlayerPosition)}
-                    >
-                      <option value="">Select seat</option>
-                      {availablePositions.map((pos) => {
-                        const seatNum = positions.indexOf(pos) + 1;
-                        return (
-                          <option key={pos} value={pos}>
-                            Seat {seatNum}
-                          </option>
-                        );
-                      })}
-                    </select>
                     <button
                       className="btn-primary btn-small"
-                      onClick={() => {
-                        if (selectedPosition) {
-                          approvePlayer(pending.socketId, selectedPosition);
-                          setSelectedPosition(null);
-                        }
-                      }}
-                      disabled={!selectedPosition}
+                      onClick={() => approvePlayer(pending.socketId)}
                     >
                       Accept
                     </button>

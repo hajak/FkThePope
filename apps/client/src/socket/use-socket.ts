@@ -329,8 +329,8 @@ export function useGameActions() {
     getSocket().emit('continue-game');
   }, []);
 
-  const approvePlayer = useCallback((socketId: string, position: PlayerPosition) => {
-    getSocket().emit('approve-player', { socketId, position });
+  const approvePlayer = useCallback((socketId: string) => {
+    getSocket().emit('approve-player', { socketId });
   }, []);
 
   const rejectPlayer = useCallback((socketId: string) => {

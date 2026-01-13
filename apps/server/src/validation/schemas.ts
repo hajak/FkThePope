@@ -137,7 +137,6 @@ export const ReplaceWithBotSchema = z.object({
 // Player approval schemas
 export const ApprovePlayerSchema = z.object({
   socketId: z.string().min(1),
-  position: PlayerPositionSchema,
 });
 
 export const RejectPlayerSchema = z.object({

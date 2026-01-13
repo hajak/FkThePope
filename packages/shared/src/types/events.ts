@@ -62,7 +62,7 @@ export type ClientToServerEvents = {
   'start-game': () => void;
 
   // Player approval events (host only)
-  'approve-player': (data: { socketId: string; position: PlayerPosition }) => void;
+  'approve-player': (data: { socketId: string }) => void;
   'reject-player': (data: { socketId: string }) => void;
 
   // Game events
