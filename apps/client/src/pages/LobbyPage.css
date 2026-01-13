@@ -913,21 +913,39 @@
   }
 
   .room-seat {
-    height: 100px;
-    padding: 14px;
+    min-height: 90px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .room-seat .seat-position {
+    margin-bottom: 4px;
+  }
+
+  .room-seat .seat-content {
+    flex: 1;
+    justify-content: center;
+    gap: 4px;
   }
 
   .seat-avatar {
-    font-size: 24px;
+    font-size: 20px;
+  }
+
+  .seat-avatar.empty-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
   }
 
   .seat-name {
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .add-bot-btn {
-    font-size: 11px;
-    padding: 6px 12px;
+    font-size: 10px;
+    padding: 5px 10px;
   }
 
   .invite-section {
