@@ -47,25 +47,18 @@
   }
 }
 
-/* Mobile phones - fan/feather layout for better visibility */
+/* Mobile phones - spread cards more for better visibility */
 @media screen and (max-width: 767px) {
   .hand {
     padding: 5px;
-    padding-top: 20px; /* Room for selected card to raise */
-    min-height: 100px;
-    height: 100px; /* Fixed height to prevent layout shift */
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
+    min-height: 120px;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-content: flex-start;
   }
 
   .hand-card {
-    margin-left: -22px;
-    transform-origin: bottom center;
-    /* Fan effect: rotate cards based on position */
-    transform: rotate(calc((var(--index) - 6) * 3deg));
-    transition: transform 0.15s ease, margin 0.15s ease;
+    margin-left: -18px;
   }
 
   .hand-card:first-child {
@@ -73,7 +66,7 @@
   }
 
   .hand:hover .hand-card {
-    margin-left: -22px;
+    margin-left: -18px;
   }
 
   .hand:hover .hand-card:first-child {
