@@ -13,25 +13,25 @@
 .card-mini {
   width: 40px;
   height: 56px;
-  font-size: 8px;
+  font-size: 9px;
 }
 
 .card-small {
   width: 70px;
   height: 98px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .card-medium {
   width: var(--card-width);
   height: var(--card-height);
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .card-large {
   width: 120px;
   height: 168px;
-  font-size: 20px;
+  font-size: 22px;
 }
 
 .card.clickable {
@@ -92,10 +92,19 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+.card-center-rank {
+  font-size: 2.2em;
+  font-weight: bold;
 }
 
 .card-suit-large {
-  font-size: 2.5em;
+  font-size: 1.8em;
 }
 
 /* Card back */

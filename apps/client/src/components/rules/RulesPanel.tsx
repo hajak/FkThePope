@@ -70,6 +70,10 @@ export function RulesPanel({ trumpSuit }: RulesPanelProps) {
         <h4>Scoring</h4>
         <p>Player with the most tricks wins the hand and scores 1 point.</p>
       </div>
+
+      <div className="version-info">
+        Version 1.1.0
+      </div>
     </div>
   );
 }

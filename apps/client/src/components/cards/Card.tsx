@@ -70,6 +70,7 @@ export function Card({
         <span className="card-suit">{suitSymbol}</span>
       </div>
       <div className="card-center" aria-hidden="true">
+        <span className="card-center-rank">{card.rank}</span>
         <span className="card-suit-large">{suitSymbol}</span>
       </div>
       <div className="card-corner bottom-right" aria-hidden="true">
