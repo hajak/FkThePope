@@ -4,15 +4,80 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Decorative background elements */
+.lobby-page::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 50%, rgba(76, 175, 80, 0.05) 0%, transparent 50%),
+              radial-gradient(circle at 70% 80%, rgba(233, 69, 96, 0.05) 0%, transparent 50%);
+  animation: float 20s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(-2%, 2%) rotate(1deg); }
 }
 
 .lobby-card {
-  background-color: var(--color-surface);
-  border-radius: 12px;
-  padding: 32px;
+  background: rgba(26, 26, 46, 0.95);
+  border-radius: 20px;
+  padding: 40px;
   width: 100%;
-  max-width: 500px;
+  max-width: 480px;
   text-align: center;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5),
+              0 0 0 1px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  position: relative;
+  animation: cardAppear 0.5s ease-out;
+}
+
+@keyframes cardAppear {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Decorative corner accents */
+.lobby-card::before,
+.lobby-card::after {
+  content: '';
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border: 2px solid rgba(76, 175, 80, 0.3);
+  pointer-events: none;
+}
+
+.lobby-card::before {
+  top: 15px;
+  left: 15px;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 8px 0 0 0;
+}
+
+.lobby-card::after {
+  bottom: 15px;
+  right: 15px;
+  border-left: none;
+  border-top: none;
+  border-radius: 0 0 8px 0;
 }
 
 .lobby-logo {
@@ -20,53 +85,68 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .lobby-logo h1 {
-  font-size: 2.5rem;
+  font-size: 2.2rem;
   margin: 0;
-  color: var(--color-accent);
+  background: linear-gradient(135deg, #4caf50 0%, #81c784 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
 }
 
 .lobby-logo .logo-cards {
   display: flex;
   position: relative;
-  width: 48px;
-  height: 40px;
+  width: 56px;
+  height: 48px;
 }
 
 .lobby-logo .logo-card {
   position: absolute;
-  width: 30px;
-  height: 40px;
-  background: white;
-  border-radius: 4px;
+  width: 36px;
+  height: 48px;
+  background: linear-gradient(145deg, #ffffff 0%, #f0f0f0 100%);
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  font-size: 20px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  font-size: 22px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  transition: transform 0.3s ease;
+}
+
+.lobby-card:hover .lobby-logo .logo-card.red {
+  transform: rotate(-15deg) translateY(-3px);
+}
+
+.lobby-card:hover .lobby-logo .logo-card.black {
+  transform: rotate(15deg) translateY(-3px);
 }
 
 .lobby-logo .logo-card.red {
   color: #e74c3c;
   left: 0;
-  transform: rotate(-10deg);
+  transform: rotate(-12deg);
   z-index: 1;
 }
 
 .lobby-logo .logo-card.black {
   color: #1a1a2e;
-  left: 18px;
-  transform: rotate(10deg);
+  left: 20px;
+  transform: rotate(12deg);
   z-index: 2;
 }
 
 .subtitle {
   color: var(--color-text-muted);
-  margin-bottom: 32px;
+  margin-bottom: 36px;
+  font-size: 15px;
+  letter-spacing: 0.5px;
 }
 
 .name-form {
@@ -76,46 +156,122 @@
 
 .name-form input {
   flex: 1;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text);
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.name-form input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.name-form input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.name-form .btn-primary {
+  padding: 14px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+  transition: all 0.3s ease;
+}
+
+.name-form .btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
 }
 
 .connection-msg {
-  margin-top: 16px;
+  margin-top: 20px;
   color: var(--color-warning);
   font-size: 14px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* Room list screen */
+.lobby-card h2 {
+  font-size: 1.5rem;
+  margin-bottom: 24px;
+  color: var(--color-text);
 }
 
 .create-room {
   display: flex;
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .create-room input {
   flex: 1;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text);
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.create-room input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.create-room .btn-primary {
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-weight: 600;
 }
 
 .room-list h3 {
   text-align: left;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   color: var(--color-text-muted);
-  font-size: 14px;
+  font-size: 12px;
   text-transform: uppercase;
+  letter-spacing: 1.5px;
 }
 
 .no-rooms {
   color: var(--color-text-muted);
   font-size: 14px;
-  padding: 20px;
+  padding: 30px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 2px dashed rgba(255, 255, 255, 0.1);
 }
 
 .room-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
-  background-color: var(--color-primary);
-  border-radius: 8px;
-  margin-bottom: 8px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.3s ease;
+}
+
+.room-item:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateX(4px);
 }
 
 .room-info {
@@ -124,81 +280,134 @@
 
 .room-name {
   display: block;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;
 }
 
 .room-players-count {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-text-muted);
 }
 
-/* Room waiting */
+.room-item .btn-secondary {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+/* Room waiting screen */
 .room-card {
-  max-width: 600px;
+  max-width: 650px;
+  padding: 36px;
+}
+
+.room-card h2 {
+  font-size: 1.3rem;
+  color: var(--color-accent);
 }
 
 .room-players {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
-  margin: 24px 0;
+  margin: 28px 0;
 }
 
 .room-seat {
-  padding: 16px;
-  border-radius: 8px;
+  padding: 20px;
+  border-radius: 16px;
   text-align: center;
-  min-height: 80px;
+  min-height: 100px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  transition: all 0.3s ease;
 }
 
 .room-seat.filled {
-  background-color: var(--color-primary);
+  background: linear-gradient(145deg, rgba(76, 175, 80, 0.15) 0%, rgba(76, 175, 80, 0.08) 100%);
+  border: 2px solid rgba(76, 175, 80, 0.3);
 }
 
 .room-seat.empty {
-  background-color: transparent;
-  border: 2px dashed var(--color-primary);
+  background: rgba(255, 255, 255, 0.02);
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+}
+
+.room-seat.empty:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .seat-position {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
+  letter-spacing: 1.5px;
   color: var(--color-text-muted);
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .seat-name {
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--color-text);
 }
 
 .add-bot-btn {
-  font-size: 12px;
-  padding: 6px 12px;
+  font-size: 13px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--color-text-muted);
+  transition: all 0.3s ease;
+}
+
+.add-bot-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--color-text);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .room-actions {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   justify-content: center;
-  margin-top: 24px;
+  margin-top: 28px;
+}
+
+.room-actions .btn-secondary {
+  padding: 14px 28px;
+  border-radius: 12px;
+}
+
+.room-actions .btn-primary {
+  padding: 14px 32px;
+  border-radius: 12px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.room-actions .btn-primary:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
 }
 
 /* Pending join screen */
 .pending-card {
-  max-width: 400px;
+  max-width: 420px;
 }
 
 .pending-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--color-primary);
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
   border-top-color: var(--color-accent);
   border-radius: 50%;
-  margin: 24px auto;
+  margin: 28px auto;
   animation: spin 1s linear infinite;
 }
 
@@ -210,22 +419,25 @@
 
 .pending-message {
   color: var(--color-text-muted);
-  margin-bottom: 24px;
+  margin-bottom: 28px;
+  font-size: 15px;
 }
 
 /* Pending players section (for host) */
 .pending-players-section {
-  background-color: var(--color-primary);
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 16px;
+  background: linear-gradient(135deg, rgba(233, 69, 96, 0.1) 0%, rgba(233, 69, 96, 0.05) 100%);
+  border: 1px solid rgba(233, 69, 96, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
 }
 
 .pending-players-section h3 {
-  margin: 0 0 12px;
-  font-size: 14px;
+  margin: 0 0 16px;
+  font-size: 12px;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  letter-spacing: 1.5px;
+  color: #e74c3c;
   text-align: left;
 }
 
@@ -233,10 +445,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: var(--color-surface);
-  padding: 12px;
-  border-radius: 6px;
-  margin-bottom: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 14px 16px;
+  border-radius: 10px;
+  margin-bottom: 10px;
 }
 
 .pending-player-item:last-child {
@@ -244,67 +456,72 @@
 }
 
 .pending-player-name {
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 15px;
 }
 
 .pending-player-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
 }
 
 .position-select {
-  padding: 6px 10px;
-  border-radius: 4px;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-primary);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--color-text);
   font-size: 13px;
 }
 
 .btn-small {
-  padding: 6px 12px;
+  padding: 8px 14px;
   font-size: 13px;
+  border-radius: 8px;
 }
 
 .btn-danger {
-  background-color: #e74c3c;
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
   color: white;
   border: none;
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
-  transition: background-color 0.2s;
+  transition: all 0.3s ease;
 }
 
 .btn-danger:hover {
-  background-color: #c0392b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
 }
 
 /* Room chat */
 .room-chat {
-  margin-top: 20px;
-  background-color: var(--color-primary);
-  border-radius: 8px;
-  padding: 16px;
+  margin-top: 24px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 20px;
   text-align: left;
 }
 
 .room-chat h3 {
-  margin: 0 0 12px;
-  font-size: 14px;
+  margin: 0 0 14px;
+  font-size: 12px;
   text-transform: uppercase;
+  letter-spacing: 1.5px;
   color: var(--color-text-muted);
 }
 
 .chat-messages {
-  height: 150px;
+  height: 140px;
   overflow-y: auto;
-  background-color: var(--color-surface);
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
 }
 
 .chat-empty {
@@ -312,12 +529,19 @@
   font-size: 13px;
   text-align: center;
   margin: 0;
+  padding: 30px 0;
 }
 
 .chat-message {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.5;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .chat-message:last-child {
@@ -327,7 +551,7 @@
 .chat-sender {
   font-weight: 600;
   color: var(--color-accent);
-  margin-right: 6px;
+  margin-right: 8px;
 }
 
 .chat-text {
@@ -337,15 +561,61 @@
 
 .chat-input-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .chat-input-row input {
   flex: 1;
-  padding: 10px 12px;
+  padding: 12px 16px;
   font-size: 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+  transition: all 0.3s ease;
+}
+
+.chat-input-row input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .chat-input-row button {
-  padding: 10px 16px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .lobby-card {
+    padding: 28px 20px;
+    border-radius: 16px;
+  }
+
+  .lobby-logo h1 {
+    font-size: 1.8rem;
+  }
+
+  .room-players {
+    grid-template-columns: 1fr;
+  }
+
+  .name-form {
+    flex-direction: column;
+  }
+
+  .create-room {
+    flex-direction: column;
+  }
+
+  .room-actions {
+    flex-direction: column;
+  }
+
+  .pending-player-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
 }

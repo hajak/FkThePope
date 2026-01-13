@@ -112,9 +112,9 @@ export function useSocket() {
       setPendingPlayers(pending);
     });
 
-    socket.on('join-approved', ({ position }) => {
+    socket.on('join-approved', () => {
       setPendingJoin(null);
-      showToast(`You've been approved! Playing as ${position}`, 'success');
+      showToast(`You've been approved!`, 'success');
     });
 
     socket.on('join-rejected', ({ message }) => {
@@ -181,7 +181,10 @@ export function useSocket() {
       preserveTrick();
       isAnimatingRef.current = true;
 
-      showToast(`${winner} wins the trick!`, 'info');
+      // Get player name for the toast
+      const gameState = useGameStore.getState().gameState;
+      const winnerName = gameState?.players[winner]?.name || winner;
+      showToast(`${winnerName} wins the trick!`, 'info');
 
       // Start the trick animation
       startTrickAnimation(winner);
