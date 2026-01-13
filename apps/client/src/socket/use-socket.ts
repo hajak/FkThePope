@@ -189,11 +189,11 @@ export function useSocket() {
       // Start the trick animation
       startTrickAnimation(winner);
 
-      // Clear preservation after animation completes (matches animation timing +10%)
+      // Clear preservation after animation completes (matches animation timing +20%)
       setTimeout(() => {
         isAnimatingRef.current = false;
         clearPreservedTrick();
-      }, 2200);
+      }, 2640);
     });
 
     socket.on('hand-complete', ({ winner, tricks }) => {

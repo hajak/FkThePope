@@ -116,7 +116,7 @@ export const useUiStore = create<UiStore>((set, get) => ({
 
     set({ trickWinner: winner, trickComplete: false });
 
-    // Start animation after showing cards (+10% display time)
+    // Start animation after showing cards (20% longer display time)
     const timeoutId = setTimeout(() => {
       set({ isAnimatingTrick: true });
 
@@ -124,10 +124,10 @@ export const useUiStore = create<UiStore>((set, get) => ({
       const clearTimeoutId = setTimeout(() => {
         // Don't clear trickWinner yet - keep cards hidden until new trick starts
         set({ isAnimatingTrick: false, trickComplete: true, trickAnimationTimeoutId: null });
-      }, 880);
+      }, 1056);
 
       set({ trickAnimationTimeoutId: clearTimeoutId });
-    }, 1100);
+    }, 1320);
 
     set({ trickAnimationTimeoutId: timeoutId });
   },
