@@ -24,7 +24,7 @@ function generateRoomName(): string {
   return `${adj} ${noun}'s ${place}`;
 }
 
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 
 export function LobbyPage() {
   const [playerName, setPlayerName] = useState('');
@@ -50,10 +50,12 @@ export function LobbyPage() {
   const [pendingRoomJoin, setPendingRoomJoin] = useState<string | null>(getRoomIdFromUrl());
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Check for stored session for rejoin
+  // Check for stored session for rejoin - but only if not joining via URL link
+  const urlRoomId = getRoomIdFromUrl();
   const storedSession = useMemo(() => getStoredSession(), []);
   const [showRejoinOption, setShowRejoinOption] = useState(
-    Boolean(storedSession.roomId && storedSession.playerName && storedSession.position)
+    // Don't show rejoin if we're joining a room via URL (shared link takes priority)
+    !urlRoomId && Boolean(storedSession.roomId && storedSession.playerName && storedSession.position)
   );
 
   // Auto-scroll chat to bottom when new messages arrive
@@ -66,6 +68,8 @@ export function LobbyPage() {
   // Handle joining room from URL parameter after entering name
   useEffect(() => {
     if (hasJoinedLobby && pendingRoomJoin && !currentRoom && !pendingJoin) {
+      // Clear any stored session since we're joining a new room via URL
+      clearSession();
       joinRoom(pendingRoomJoin);
       setPendingRoomJoin(null);
       // Clear the URL parameter

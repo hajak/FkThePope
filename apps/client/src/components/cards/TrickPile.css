@@ -23,7 +23,14 @@
 
 @media (max-width: 600px) {
   .trick-pile {
-    transform: scale(0.55);
+    transform: scale(0.65);
+  }
+}
+
+/* Mobile phones - larger center cards */
+@media screen and (max-width: 767px) {
+  .trick-pile {
+    transform: scale(0.85);
   }
 }
 

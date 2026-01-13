@@ -8,6 +8,7 @@
   justify-content: space-between;
   user-select: none;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  overflow: hidden;
 }
 
 .card-mini {

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore, useMyHand, useLegalMoves, useIsMyTurn, useTrumpSuit, useCurrentTrick, useScores } from '../stores/game-store';
 import { useGameActions } from '../socket/use-socket';
 import { useVideoStore } from '../stores/video-store';
-import { useSettingsStore } from '../stores/settings-store';
 import { GameTable } from '../components/layout/GameTable';
 import { Hand } from '../components/cards/Hand';
 import { HandResultModal } from '../components/modals/HandResultModal';
@@ -29,14 +28,7 @@ export function GamePage() {
   const [showStats, setShowStats] = useState(false);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [showRules, setShowRules] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-
-  // Settings state
-  const cardSize = useSettingsStore((s) => s.cardSize);
-  const animationsEnabled = useSettingsStore((s) => s.animationsEnabled);
-  const setCardSize = useSettingsStore((s) => s.setCardSize);
-  const setAnimationsEnabled = useSettingsStore((s) => s.setAnimationsEnabled);
 
   // Video state
   const localStream = useVideoStore((s) => s.localStream);
@@ -114,7 +106,7 @@ export function GamePage() {
   const playerNames = gameState.players;
 
   return (
-    <div className={`game-page ${cardSize === 'small' ? 'size-small' : 'size-large'} ${!animationsEnabled ? 'no-animations' : ''}`}>
+    <div className="game-page">
       {/* Game header - simplified */}
       <header className="game-header">
         <div className="game-logo">
@@ -163,14 +155,6 @@ export function GamePage() {
             title="View game rules"
           >
             Rules
-          </button>
-
-          <button
-            className="header-btn settings-btn"
-            onClick={() => setShowSettings(true)}
-            title="Settings"
-          >
-            Settings
           </button>
 
           {/* Video controls */}
@@ -362,61 +346,10 @@ export function GamePage() {
               </div>
             </div>
 
-            <div className="version-info">Version 1.6.0</div>
+            <div className="version-info">Version 1.7.0</div>
 
             <button className="btn-primary" onClick={() => setShowRules(false)}>
               Back to Game
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="modal-overlay" onClick={() => setShowSettings(false)}>
-          <div className="modal-content settings-modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Settings</h2>
-
-            <div className="settings-content">
-              <div className="setting-item">
-                <div className="setting-label">
-                  <span className="setting-name">Card & Text Size</span>
-                  <span className="setting-desc">Adjust for readability</span>
-                </div>
-                <div className="setting-control">
-                  <button
-                    className={`size-btn ${cardSize === 'small' ? 'active' : ''}`}
-                    onClick={() => setCardSize('small')}
-                  >
-                    Small
-                  </button>
-                  <button
-                    className={`size-btn ${cardSize === 'large' ? 'active' : ''}`}
-                    onClick={() => setCardSize('large')}
-                  >
-                    Large
-                  </button>
-                </div>
-              </div>
-
-              <div className="setting-item">
-                <div className="setting-label">
-                  <span className="setting-name">Animations</span>
-                  <span className="setting-desc">Card and UI animations</span>
-                </div>
-                <div className="setting-control">
-                  <button
-                    className={`toggle-btn ${animationsEnabled ? 'active' : ''}`}
-                    onClick={() => setAnimationsEnabled(!animationsEnabled)}
-                  >
-                    <span className="toggle-slider" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <button className="btn-primary" onClick={() => setShowSettings(false)}>
-              Done
             </button>
           </div>
         </div>
@@ -448,15 +381,6 @@ export function GamePage() {
           }}
         >
           Rules
-        </button>
-        <button
-          className="menu-item settings-btn"
-          onClick={() => {
-            setShowMobileMenu(false);
-            setShowSettings(true);
-          }}
-        >
-          Settings
         </button>
         {!localStream ? (
           <button
