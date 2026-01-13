@@ -47,6 +47,33 @@
   }
 }
 
+/* Mobile phones - spread cards more for better visibility */
+@media screen and (max-width: 767px) {
+  .hand {
+    padding: 5px;
+    min-height: 120px;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-content: flex-start;
+  }
+
+  .hand-card {
+    margin-left: -18px;
+  }
+
+  .hand-card:first-child {
+    margin-left: 0;
+  }
+
+  .hand:hover .hand-card {
+    margin-left: -18px;
+  }
+
+  .hand:hover .hand-card:first-child {
+    margin-left: 0;
+  }
+}
+
 /* Card deal animation */
 @keyframes dealCard {
   from {
