@@ -825,38 +825,41 @@
     padding-right: var(--safe-area-right);
   }
 
+  /* Ultra-compact header on mobile */
   .game-header {
-    padding: 8px 12px;
-    padding-top: calc(8px + var(--safe-area-top));
-    gap: 8px;
+    padding: 6px 10px;
+    padding-top: calc(6px + var(--safe-area-top));
+    gap: 6px;
   }
 
+  /* Hide logo text on mobile, just show cards */
   .game-logo h1 {
-    font-size: 14px;
+    display: none;
   }
 
   .logo-cards {
-    width: 28px;
-    height: 22px;
+    width: 32px;
+    height: 24px;
   }
 
   .logo-card {
-    width: 17px;
-    height: 22px;
-    font-size: 11px;
+    width: 18px;
+    height: 24px;
+    font-size: 12px;
   }
 
   .logo-card.black {
-    left: 11px;
+    left: 14px;
   }
 
-  /* Hide desktop header buttons, show mobile menu */
+  /* Hide ALL desktop header buttons, show only mobile menu */
   .header-controls .stats-btn,
   .header-controls .rules-btn,
   .header-controls .settings-btn,
   .header-controls .video-start-btn,
   .header-controls .video-controls-inline,
-  .header-controls .header-spacer {
+  .header-controls .header-spacer,
+  .header-controls .quit-btn {
     display: none;
   }
 
@@ -864,68 +867,68 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 24px;
+    padding: 4px 10px;
   }
 
-  /* Keep quit button visible but smaller */
-  .quit-btn {
-    padding: 6px 12px;
-    font-size: 12px;
-    min-height: 36px;
-  }
-
-  /* Trump badge - compact */
+  /* Trump badge - very compact, inline */
   .header-center {
     position: static;
     transform: none;
+    flex: 1;
+    display: flex;
+    justify-content: center;
   }
 
   .trump-badge {
-    padding: 4px 10px;
-    gap: 4px;
+    padding: 4px 12px;
+    gap: 6px;
+    border-radius: 16px;
   }
 
   .trump-icon {
-    font-size: 16px;
+    font-size: 18px;
   }
 
   .trump-text {
-    font-size: 10px;
+    font-size: 11px;
   }
 
-  /* Table area adjustments */
+  /* Table area - more space for table */
   .table-area {
-    padding: 8px;
+    padding: 4px;
     flex: 1;
-    min-height: 280px;
+    min-height: 220px;
   }
 
-  /* Hand area with safe area */
+  /* Hand area - compact */
   .hand-area {
-    padding: 8px 8px calc(12px + var(--safe-area-bottom));
-    gap: 8px;
+    padding: 6px 4px calc(8px + var(--safe-area-bottom));
+    gap: 6px;
   }
 
   .play-actions-container {
-    min-height: 40px;
+    min-height: 36px;
   }
 
   .play-btn {
-    padding: 10px 24px;
+    padding: 10px 20px;
     font-size: 14px;
-    min-height: 44px;
+    min-height: 40px;
+    border-radius: 20px;
   }
 
   .play-actions-placeholder,
   .waiting-message {
-    font-size: 12px;
-    padding: 8px 16px;
+    font-size: 11px;
+    padding: 6px 12px;
   }
 
   /* Modal adjustments for mobile */
   .modal-content {
     padding: 20px;
-    margin: 16px;
-    max-height: calc(100vh - 32px - var(--safe-area-top) - var(--safe-area-bottom));
+    margin: 12px;
+    max-height: calc(100vh - 24px - var(--safe-area-top) - var(--safe-area-bottom));
     overflow-y: auto;
   }
 
@@ -934,7 +937,7 @@
     margin-bottom: 16px;
   }
 
-  /* Mobile menu overlay - appears when menu button is clicked */
+  /* Mobile menu overlay - full screen menu */
   .mobile-menu-overlay.open {
     display: flex;
     position: fixed;
@@ -942,29 +945,31 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.9);
+    background: rgba(10, 10, 20, 0.95);
     backdrop-filter: blur(10px);
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 16px;
+    gap: 12px;
     z-index: 1000;
     padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left);
   }
 
   .mobile-menu-overlay .menu-item {
-    width: 200px;
-    padding: 16px 24px;
-    font-size: 16px;
+    width: 220px;
+    padding: 14px 24px;
+    font-size: 15px;
     border-radius: 12px;
     text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
   }
 
   .mobile-menu-overlay .menu-close {
     position: absolute;
-    top: calc(16px + var(--safe-area-top));
-    right: calc(16px + var(--safe-area-right));
-    font-size: 24px;
+    top: calc(12px + var(--safe-area-top));
+    right: calc(12px + var(--safe-area-right));
+    font-size: 28px;
     background: transparent;
     color: var(--color-text);
     min-height: 44px;
@@ -972,21 +977,39 @@
   }
 }
 
-/* Cards on mobile - smaller */
+/* Mobile menu extras */
+@media (max-width: 480px) {
+  .mobile-menu-overlay .menu-divider {
+    width: 180px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.15);
+    margin: 8px 0;
+  }
+
+  .mobile-menu-overlay .quit-menu-btn {
+    background: rgba(231, 76, 60, 0.2);
+    border-color: rgba(231, 76, 60, 0.4);
+    color: #e74c3c;
+  }
+}
+
+/* Cards on mobile - compact but readable */
 @media (max-width: 480px) {
   .hand {
-    min-height: 120px;
-    padding: 5px;
+    min-height: 100px;
+    padding: 4px;
   }
 
   .hand .card-medium {
-    width: 70px;
-    height: 98px;
-    font-size: 12px;
+    width: 52px;
+    height: 72px;
+    font-size: 11px;
+    border-radius: 6px;
   }
 
+  /* Tighter overlap for mobile */
   .hand-card {
-    margin-left: -35px;
+    margin-left: -28px;
   }
 
   .hand-card:first-child {
@@ -994,21 +1017,21 @@
   }
 
   .hand:hover .hand-card {
-    margin-left: -35px;
+    margin-left: -28px;
   }
 
   .hand:hover .hand-card:first-child {
     margin-left: 0;
   }
 
-  /* Touch devices on mobile - slightly spread */
+  /* Touch devices on mobile */
   @media (pointer: coarse) {
     .hand-card {
-      margin-left: -30px;
+      margin-left: -24px;
     }
 
     .hand:hover .hand-card {
-      margin-left: -30px;
+      margin-left: -24px;
     }
   }
 }

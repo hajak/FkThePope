@@ -326,68 +326,62 @@
 /* iPhone and small mobile devices */
 @media (max-width: 400px) {
   .game-table {
-    height: 280px;
-    border-radius: 80px / 50px;
+    height: 240px;
+    border-radius: 60px / 40px;
     border-width: 2px;
   }
 
   .seat {
-    padding: 4px;
+    padding: 2px;
     gap: 2px;
-    min-width: 100px;
+    min-width: auto;
   }
 
+  /* Push seats to edges of table */
   .seat-top {
-    top: 5px;
+    top: -5px;
   }
 
   .seat-bottom {
-    bottom: -8px;
+    bottom: -12px;
   }
 
   .seat-left {
-    left: 8px;
+    left: -5px;
   }
 
   .seat-right {
-    right: 8px;
+    right: -5px;
   }
 
   .seat-info {
-    padding: 3px 6px;
-    min-width: 60px;
+    padding: 4px 8px;
+    min-width: auto;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 6px;
   }
 
   .seat-name {
-    font-size: 10px;
-    max-width: 80px;
+    font-size: 11px;
+    max-width: 70px;
+    font-weight: 600;
   }
 
   .seat-tricks {
-    font-size: 9px;
+    font-size: 10px;
+    color: var(--color-accent);
+    font-weight: 500;
   }
 
+  /* Hide video on mobile - just show name */
   .video-placeholder {
-    width: 45px;
-    height: 34px;
-    border-width: 1px;
-  }
-
-  .video-placeholder .video-icon {
-    font-size: 16px;
-  }
-
-  .video-placeholder .bot-icon {
-    font-size: 20px;
-  }
-
-  /* Hide card count on very small screens */
-  .card-count {
     display: none;
   }
 
-  .mini-card {
-    margin-left: -18px;
+  /* Hide card count and mini cards on mobile */
+  .card-count,
+  .seat-cards {
+    display: none;
   }
 }
 

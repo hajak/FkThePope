@@ -125,3 +125,37 @@
     rgba(255, 255, 255, 0.03) 10px
   );
 }
+
+/* Mobile card adjustments - make rank/suit more prominent */
+@media (max-width: 480px) {
+  .card-corner {
+    padding: 2px 3px;
+  }
+
+  .card-rank {
+    font-size: 1.1em;
+  }
+
+  .card-suit {
+    font-size: 0.8em;
+  }
+
+  .card-center {
+    gap: 0;
+  }
+
+  .card-center-rank {
+    font-size: 1.6em;
+    line-height: 1;
+  }
+
+  .card-suit-large {
+    font-size: 1.2em;
+    line-height: 1;
+  }
+
+  /* Hide bottom corner on very small cards to reduce clutter */
+  .card-corner.bottom-right {
+    display: none;
+  }
+}

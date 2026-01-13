@@ -36,7 +36,8 @@
       "Bash(npm search:*)",
       "Bash(npx -y @anthropic-ai/create-mcp --help)",
       "Bash(npm view:*)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }

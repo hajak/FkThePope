@@ -496,6 +496,16 @@ export function GamePage() {
             </button>
           </>
         )}
+        <div className="menu-divider" />
+        <button
+          className="menu-item quit-menu-btn"
+          onClick={() => {
+            setShowMobileMenu(false);
+            setShowQuitConfirm(true);
+          }}
+        >
+          Quit Game
+        </button>
       </div>
     </div>
   );
