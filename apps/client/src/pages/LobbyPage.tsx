@@ -1,9 +1,15 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useGameStore } from '../stores/game-store';
 import { useLobbyStore } from '../stores/lobby-store';
 import { useGameActions } from '../socket/use-socket';
 import type { PlayerPosition } from '@fkthepope/shared';
 import './LobbyPage.css';
+
+// Get room ID from URL if present
+function getRoomIdFromUrl(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('room');
+}
 
 // Word lists for random room names
 const adjectives = ['Swift', 'Bold', 'Clever', 'Mighty', 'Noble', 'Royal', 'Lucky', 'Wild', 'Bright', 'Grand', 'Silent', 'Golden', 'Silver', 'Hidden', 'Ancient'];
@@ -37,6 +43,8 @@ export function LobbyPage() {
   const { joinLobby, createRoom, joinRoom, leaveRoom, startGame, addBot, approvePlayer, rejectPlayer, cancelJoinRequest, sendChatMessage } = useGameActions();
 
   const [chatInput, setChatInput] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [pendingRoomJoin, setPendingRoomJoin] = useState<string | null>(getRoomIdFromUrl());
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll chat to bottom when new messages arrive
@@ -45,6 +53,43 @@ export function LobbyPage() {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [chatMessages]);
+
+  // Handle joining room from URL parameter after entering name
+  useEffect(() => {
+    if (hasJoinedLobby && pendingRoomJoin && !currentRoom && !pendingJoin) {
+      joinRoom(pendingRoomJoin);
+      setPendingRoomJoin(null);
+      // Clear the URL parameter
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [hasJoinedLobby, pendingRoomJoin, currentRoom, pendingJoin, joinRoom]);
+
+  // Generate invite link for the current room
+  const getInviteLink = useCallback(() => {
+    if (!currentRoom) return '';
+    const baseUrl = window.location.origin + window.location.pathname;
+    return `${baseUrl}?room=${currentRoom.id}`;
+  }, [currentRoom]);
+
+  // Copy invite link to clipboard
+  const copyInviteLink = useCallback(async () => {
+    const link = getInviteLink();
+    try {
+      await navigator.clipboard.writeText(link);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = link;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  }, [getInviteLink]);
 
   const handleSendChat = () => {
     if (chatInput.trim()) {
@@ -162,7 +207,7 @@ export function LobbyPage() {
       <div className="lobby-page">
         <div className="lobby-card room-card">
           <h2>{currentRoom.name}</h2>
-          <p className="room-subtitle">Fill all 4 seats to start the game</p>
+          <p className="room-subtitle">Invite friends or add bots to fill all 4 seats</p>
 
           <div className="room-players">
             {positions.map((pos, idx) => {
@@ -192,6 +237,26 @@ export function LobbyPage() {
                 </div>
               );
             })}
+          </div>
+
+          {/* Invite link section */}
+          <div className="invite-section">
+            <div className="invite-label">Invite friends:</div>
+            <div className="invite-link-row">
+              <input
+                type="text"
+                readOnly
+                value={getInviteLink()}
+                className="invite-link-input"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+              <button
+                className={`copy-link-btn ${linkCopied ? 'copied' : ''}`}
+                onClick={copyInviteLink}
+              >
+                {linkCopied ? '✓ Copied!' : 'Copy Link'}
+              </button>
+            </div>
           </div>
 
           {/* Pending players section for host */}

@@ -436,6 +436,67 @@
   transform: scale(1.05);
 }
 
+/* Invite section */
+.invite-section {
+  background: linear-gradient(135deg, rgba(100, 181, 246, 0.1) 0%, rgba(100, 181, 246, 0.05) 100%);
+  border: 1px solid rgba(100, 181, 246, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.invite-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #64b5f6;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.invite-link-row {
+  display: flex;
+  gap: 10px;
+}
+
+.invite-link-input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  cursor: text;
+}
+
+.invite-link-input:focus {
+  outline: none;
+  border-color: rgba(100, 181, 246, 0.5);
+}
+
+.copy-link-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #64b5f6 0%, #42a5f5 100%);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.copy-link-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(100, 181, 246, 0.3);
+}
+
+.copy-link-btn.copied {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+}
+
 .room-actions {
   display: flex;
   gap: 16px;
