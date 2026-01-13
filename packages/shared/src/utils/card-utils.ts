@@ -21,8 +21,8 @@ export function formatCardLong(card: Card): string {
  */
 export function sortCards(cards: Card[]): Card[] {
   return [...cards].sort((a, b) => {
-    // First by suit
-    const suitOrder: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
+    // First by suit (Spades, Hearts, Clubs, Diamonds)
+    const suitOrder: Suit[] = ['spades', 'hearts', 'clubs', 'diamonds'];
     const suitDiff = suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
     if (suitDiff !== 0) return suitDiff;
     // Then by rank (high to low)
