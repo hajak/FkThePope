@@ -12,6 +12,8 @@ export interface RoomPlayer {
   position: PlayerPosition;
   isBot: boolean;
   isReady: boolean;
+  isConnected: boolean;
+  disconnectedAt: number | null;
 }
 
 /**
@@ -59,6 +61,8 @@ export class LobbyManager {
       position: 'south',
       isBot: false,
       isReady: false,
+      isConnected: true,
+      disconnectedAt: null,
     });
 
     this.rooms.set(roomId, room);
@@ -114,6 +118,8 @@ export class LobbyManager {
       position,
       isBot: false,
       isReady: false,
+      isConnected: true,
+      disconnectedAt: null,
     };
 
     room.players.set(position, player);
@@ -123,7 +129,7 @@ export class LobbyManager {
   }
 
   /**
-   * Leave a room
+   * Leave a room (for lobby/waiting room - removes player)
    */
   leaveRoom(socketId: string): { roomId?: string; wasHost: boolean; roomDeleted: boolean; newHostId?: string } {
     const roomId = this.playerRooms.get(socketId);
@@ -149,8 +155,8 @@ export class LobbyManager {
 
     const wasHost = room.hostId === socketId;
 
-    // Count human players remaining
-    const humanPlayers = Array.from(room.players.values()).filter(p => !p.isBot);
+    // Count human players remaining (connected ones)
+    const humanPlayers = Array.from(room.players.values()).filter(p => !p.isBot && p.isConnected);
 
     // If no human players left, delete room
     if (humanPlayers.length === 0) {
@@ -173,6 +179,136 @@ export class LobbyManager {
     }
 
     return { roomId, wasHost, roomDeleted: false, newHostId };
+  }
+
+  /**
+   * Mark a player as disconnected during an active game (keeps them in room)
+   */
+  markPlayerDisconnected(socketId: string): {
+    roomId?: string;
+    position?: PlayerPosition;
+    playerName?: string;
+    wasHost: boolean;
+    newHostId?: string;
+  } {
+    const roomId = this.playerRooms.get(socketId);
+    if (!roomId) {
+      return { wasHost: false };
+    }
+
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      this.playerRooms.delete(socketId);
+      return { wasHost: false };
+    }
+
+    // Find player and mark as disconnected
+    let foundPosition: PlayerPosition | undefined;
+    let foundPlayerName: string | undefined;
+    for (const [position, player] of room.players) {
+      if (player.socketId === socketId && !player.isBot) {
+        player.isConnected = false;
+        player.disconnectedAt = Date.now();
+        foundPosition = position;
+        foundPlayerName = player.name;
+        break;
+      }
+    }
+
+    this.playerRooms.delete(socketId);
+
+    const wasHost = room.hostId === socketId;
+
+    // Transfer host if needed
+    let newHostId: string | undefined;
+    if (wasHost) {
+      // Find another connected human player
+      const connectedHuman = Array.from(room.players.values()).find(p => !p.isBot && p.isConnected);
+      if (connectedHuman) {
+        newHostId = connectedHuman.socketId;
+        room.hostId = newHostId;
+      }
+    }
+
+    return { roomId, position: foundPosition, playerName: foundPlayerName, wasHost, newHostId };
+  }
+
+  /**
+   * Reconnect a disconnected player
+   */
+  reconnectPlayer(
+    roomId: string,
+    position: PlayerPosition,
+    newSocketId: string,
+    playerName: string
+  ): { success: boolean; error?: string; player?: RoomPlayer } {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return { success: false, error: 'Room not found' };
+    }
+
+    const player = room.players.get(position);
+    if (!player) {
+      return { success: false, error: 'Position not occupied' };
+    }
+
+    // Verify player name matches
+    if (player.name !== playerName) {
+      return { success: false, error: 'Player name mismatch' };
+    }
+
+    // Don't allow reconnecting as a bot
+    if (player.isBot) {
+      return { success: false, error: 'Cannot rejoin as bot' };
+    }
+
+    // Update socket and connection status
+    player.socketId = newSocketId;
+    player.isConnected = true;
+    player.disconnectedAt = null;
+    this.playerRooms.set(newSocketId, roomId);
+
+    return { success: true, player };
+  }
+
+  /**
+   * Replace a disconnected player with a bot
+   */
+  replaceWithBot(roomId: string, position: PlayerPosition): { success: boolean; error?: string } {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return { success: false, error: 'Room not found' };
+    }
+
+    const player = room.players.get(position);
+    if (!player) {
+      return { success: false, error: 'Position not occupied' };
+    }
+
+    // Only replace disconnected human players
+    if (player.isBot) {
+      return { success: false, error: 'Already a bot' };
+    }
+
+    if (player.isConnected) {
+      return { success: false, error: 'Player is still connected' };
+    }
+
+    // Replace with bot
+    const botPlayer: RoomPlayer = {
+      id: playerId(),
+      socketId: `bot_${position}`,
+      name: BOT_NAMES[position],
+      position,
+      isBot: true,
+      isReady: true,
+      isConnected: true,
+      disconnectedAt: null,
+    };
+
+    room.players.set(position, botPlayer);
+
+    return { success: true };
   }
 
   /**
@@ -214,6 +350,8 @@ export class LobbyManager {
       position: botPosition,
       isBot: true,
       isReady: true,
+      isConnected: true,
+      disconnectedAt: null,
     };
 
     room.players.set(botPosition, botPlayer);
@@ -432,6 +570,8 @@ export class LobbyManager {
       position,
       isBot: false,
       isReady: false,
+      isConnected: true,
+      disconnectedAt: null,
     };
 
     room.players.set(position, player);

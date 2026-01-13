@@ -25,6 +25,7 @@ export interface PlayerView {
   isCurrentTurn: boolean;
   isBot: boolean;
   isConnected: boolean;
+  disconnectedAt?: number | null;
 }
 
 /**

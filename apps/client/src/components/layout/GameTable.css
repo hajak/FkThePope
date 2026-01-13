@@ -210,6 +210,55 @@
   border-color: rgba(255, 255, 255, 0.05);
 }
 
+/* Disconnected player styling */
+.seat.disconnected {
+  opacity: 0.7;
+}
+
+.disconnected-placeholder {
+  background: rgba(139, 69, 19, 0.6) !important;
+  border-color: rgba(255, 165, 0, 0.5) !important;
+}
+
+.disconnected-placeholder .no-video {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.disconnect-icon {
+  font-size: 20px;
+}
+
+.disconnect-label {
+  font-size: 10px;
+  color: #ffa500;
+  font-weight: 600;
+}
+
+.name-disconnected {
+  color: #ffa500 !important;
+  text-decoration: line-through;
+}
+
+.replace-bot-btn {
+  background: var(--color-accent);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  white-space: nowrap;
+}
+
+.replace-bot-btn:hover {
+  background: var(--color-accent-hover);
+}
+
 .video-placeholder .mute-indicator {
   position: absolute;
   bottom: 4px;

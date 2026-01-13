@@ -23,7 +23,7 @@ export function GamePage() {
   const currentTrick = useCurrentTrick();
   const scores = useScores();
 
-  const { playCard, leaveRoom } = useGameActions();
+  const { playCard, leaveRoom, replaceWithBot } = useGameActions();
 
   // UI state
   const [showStats, setShowStats] = useState(false);
@@ -231,6 +231,7 @@ export function GamePage() {
           videoStreams={videoStreams}
           playerMuteStatus={playerMuteStatus}
           isLocalMuted={!isAudioEnabled}
+          onReplaceWithBot={replaceWithBot}
         />
       </div>
 
@@ -361,7 +362,7 @@ export function GamePage() {
               </div>
             </div>
 
-            <div className="version-info">Version 1.5.0</div>
+            <div className="version-info">Version 1.6.0</div>
 
             <button className="btn-primary" onClick={() => setShowRules(false)}>
               Back to Game

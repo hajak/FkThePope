@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useGameStore } from '../stores/game-store';
 import { useLobbyStore } from '../stores/lobby-store';
 import { useGameActions } from '../socket/use-socket';
+import { getStoredSession, clearSession, getSocket } from '../socket/socket-client';
 import type { PlayerPosition } from '@fkthepope/shared';
 import './LobbyPage.css';
 
@@ -22,6 +23,8 @@ function generateRoomName(): string {
   const place = places[Math.floor(Math.random() * places.length)];
   return `${adj} ${noun}'s ${place}`;
 }
+
+const APP_VERSION = '1.6.0';
 
 export function LobbyPage() {
   const [playerName, setPlayerName] = useState('');
@@ -46,6 +49,12 @@ export function LobbyPage() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [pendingRoomJoin, setPendingRoomJoin] = useState<string | null>(getRoomIdFromUrl());
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Check for stored session for rejoin
+  const storedSession = useMemo(() => getStoredSession(), []);
+  const [showRejoinOption, setShowRejoinOption] = useState(
+    Boolean(storedSession.roomId && storedSession.playerName && storedSession.position)
+  );
 
   // Auto-scroll chat to bottom when new messages arrive
   useEffect(() => {
@@ -106,6 +115,26 @@ export function LobbyPage() {
     }
   };
 
+  const handleRejoin = () => {
+    if (storedSession.roomId && storedSession.playerName && storedSession.position) {
+      setStoredName(storedSession.playerName);
+      setPlayerName(storedSession.playerName);
+      joinLobby(storedSession.playerName);
+      setHasJoinedLobby(true);
+      // Emit rejoin directly
+      getSocket().emit('rejoin-room', {
+        roomId: storedSession.roomId,
+        position: storedSession.position as PlayerPosition,
+        playerName: storedSession.playerName,
+      });
+    }
+  };
+
+  const handleDismissRejoin = () => {
+    clearSession();
+    setShowRejoinOption(false);
+  };
+
   const handleCreateRoom = () => {
     if (roomName.trim()) {
       createRoom(roomName);
@@ -129,6 +158,7 @@ export function LobbyPage() {
   if (!hasJoinedLobby) {
     return (
       <div className="lobby-page">
+        <div className="version-badge">v{APP_VERSION}</div>
         <div className="lobby-card">
           <div className="lobby-logo">
             <span className="logo-cards">
@@ -154,24 +184,44 @@ export function LobbyPage() {
             </div>
           </div>
 
-          <div className="name-form">
-            <input
-              type="text"
-              placeholder="Enter your name"
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value.slice(0, 20))}
-              onKeyPress={(e) => e.key === 'Enter' && handleJoinLobby()}
-              maxLength={20}
-              disabled={!isConnected}
-            />
-            <button
-              className="btn-primary"
-              onClick={handleJoinLobby}
-              disabled={!isConnected || !playerName.trim()}
-            >
-              Join Lobby
-            </button>
-          </div>
+          {/* Rejoin option if there's a stored session */}
+          {showRejoinOption && isConnected && (
+            <div className="rejoin-section">
+              <p className="rejoin-message">
+                You were in a game as <strong>{storedSession.playerName}</strong>
+              </p>
+              <div className="rejoin-actions">
+                <button className="btn-primary" onClick={handleRejoin}>
+                  Rejoin Game
+                </button>
+                <button className="btn-secondary" onClick={handleDismissRejoin}>
+                  Start Fresh
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Only show name form if no rejoin option or user dismissed it */}
+          {(!showRejoinOption || !isConnected) && (
+            <div className="name-form">
+              <input
+                type="text"
+                placeholder="Enter your name"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value.slice(0, 20))}
+                onKeyPress={(e) => e.key === 'Enter' && handleJoinLobby()}
+                maxLength={20}
+                disabled={!isConnected}
+              />
+              <button
+                className="btn-primary"
+                onClick={handleJoinLobby}
+                disabled={!isConnected || !playerName.trim()}
+              >
+                Join Lobby
+              </button>
+            </div>
+          )}
 
           {!isConnected && (
             <p className="connection-msg">Connecting to server...</p>
@@ -185,6 +235,7 @@ export function LobbyPage() {
   if (pendingJoin) {
     return (
       <div className="lobby-page">
+        <div className="version-badge">v{APP_VERSION}</div>
         <div className="lobby-card pending-card">
           <h2>Joining: {pendingJoin.roomName}</h2>
           <div className="pending-spinner"></div>
@@ -205,6 +256,7 @@ export function LobbyPage() {
 
     return (
       <div className="lobby-page">
+        <div className="version-badge">v{APP_VERSION}</div>
         <div className="lobby-card room-card">
           <h2>{currentRoom.name}</h2>
           <p className="room-subtitle">Invite friends or add bots to fill all 4 seats</p>
@@ -356,6 +408,7 @@ export function LobbyPage() {
   // Room list screen
   return (
     <div className="lobby-page">
+      <div className="version-badge">v{APP_VERSION}</div>
       <div className="lobby-card">
         <h2>Welcome, {storedName}!</h2>
 

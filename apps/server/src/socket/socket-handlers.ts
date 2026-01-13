@@ -18,6 +18,7 @@ import {
   PlayCardSchema,
   AddBotSchema,
   RemoveBotSchema,
+  ReplaceWithBotSchema,
   ApprovePlayerSchema,
   RejectPlayerSchema,
 } from '../validation/schemas.js';
@@ -51,7 +52,7 @@ export function setupSocketHandlers(io: GameServer): void {
       console.log(`Client disconnected: ${socket.id}`);
       // Remove from any pending lists
       lobbyManager.removePendingPlayer(socket.id);
-      handleLeaveRoom(socket, io);
+      handleDisconnect(socket, io);
     });
 
     // Lobby events
@@ -69,6 +70,7 @@ export function setupSocketHandlers(io: GameServer): void {
     // Bot events
     socket.on('add-bot', (data) => handleAddBot(socket, io, data));
     socket.on('remove-bot', (data) => handleRemoveBot(socket, io, data));
+    socket.on('replace-with-bot', (data) => handleReplaceWithBot(socket, io, data));
 
     // Player approval events (host only)
     socket.on('approve-player', (data) => handleApprovePlayer(socket, io, data));
@@ -310,7 +312,56 @@ function handleRejoinRoom(
 }
 
 /**
- * Handle leaving a room
+ * Handle socket disconnect (different from intentional leave)
+ */
+function handleDisconnect(socket: GameSocket, io: GameServer): void {
+  const roomId = socket.data.roomId;
+  if (!roomId) return;
+
+  const room = lobbyManager.getRoom(roomId);
+  if (!room) return;
+
+  // Check if game is in progress
+  const gameInProgress = activeGames.has(roomId);
+
+  if (gameInProgress) {
+    // Mark player as disconnected but keep them in the room
+    const result = lobbyManager.markPlayerDisconnected(socket.id);
+
+    if (result.roomId && result.position && result.playerName) {
+      socket.leave(result.roomId);
+
+      // Notify other players about the disconnection
+      io.to(result.roomId).emit('player-disconnected', {
+        position: result.position,
+        playerName: result.playerName,
+        disconnectedAt: Date.now(),
+      });
+
+      // Update room with new player states
+      io.to(result.roomId).emit('room-updated', {
+        players: getPlayerViews(result.roomId),
+      });
+
+      // If disconnected player was current turn, process bot turn logic
+      const gameManager = activeGames.get(result.roomId);
+      if (gameManager) {
+        const currentPlayer = gameManager.getCurrentPlayer();
+        if (currentPlayer === result.position) {
+          // Auto-play for disconnected player after a delay, or wait for replacement
+          // For now, just broadcast who we're waiting for
+          io.to(result.roomId).emit('waiting-for', { player: currentPlayer });
+        }
+      }
+    }
+  } else {
+    // In lobby/waiting room - remove player completely
+    handleLeaveRoom(socket, io);
+  }
+}
+
+/**
+ * Handle leaving a room (intentional leave)
  */
 function handleLeaveRoom(socket: GameSocket, io: GameServer): void {
   const result = lobbyManager.leaveRoom(socket.id);
@@ -352,11 +403,7 @@ function handleStartGame(socket: GameSocket, io: GameServer): void {
     return;
   }
 
-  if (room.hostId !== socket.id) {
-    socket.emit('error', { message: 'Only host can start game', code: 'NOT_HOST' });
-    return;
-  }
-
+  // Any player in the room can start the game (not just host)
   if (!lobbyManager.canStartGame(roomId)) {
     socket.emit('error', { message: 'Need 4 players to start', code: 'NOT_ENOUGH_PLAYERS' });
     return;
@@ -554,6 +601,53 @@ function handleRemoveBot(
     io.to(roomId).emit('room-updated', {
       players: getPlayerViews(roomId),
     });
+  }
+}
+
+/**
+ * Handle replacing a disconnected player with a bot
+ */
+function handleReplaceWithBot(
+  socket: GameSocket,
+  io: GameServer,
+  data: unknown
+): void {
+  const validation = validateData(ReplaceWithBotSchema, data);
+  if (!validation.success) {
+    socket.emit('error', { message: `Invalid data: ${validation.error}`, code: 'VALIDATION_ERROR' });
+    return;
+  }
+
+  const roomId = socket.data.roomId;
+  if (!roomId) {
+    socket.emit('error', { message: 'Not in a room', code: 'NOT_IN_ROOM' });
+    return;
+  }
+
+  const position = validation.data.position as PlayerPosition;
+  const result = lobbyManager.replaceWithBot(roomId, position);
+
+  if (!result.success) {
+    socket.emit('error', { message: result.error!, code: 'REPLACE_FAILED' });
+    return;
+  }
+
+  // Notify all players in room
+  io.to(roomId).emit('player-replaced', { position });
+  io.to(roomId).emit('room-updated', {
+    players: getPlayerViews(roomId),
+  });
+
+  // If game is in progress, broadcast game state and process bot turn if needed
+  const gameManager = activeGames.get(roomId);
+  if (gameManager) {
+    broadcastGameState(io, roomId, gameManager);
+
+    // If it's now the bot's turn, process it
+    const currentPlayer = gameManager.getCurrentPlayer();
+    if (currentPlayer === position) {
+      processBotTurns(io, roomId, gameManager);
+    }
   }
 }
 
@@ -852,7 +946,8 @@ function getPlayerViews(roomId: string): Array<any> {
       tricksWon: 0,
       isCurrentTurn: false,
       isBot: player.isBot,
-      isConnected: true,
+      isConnected: player.isConnected,
+      disconnectedAt: player.disconnectedAt,
     };
   });
 }

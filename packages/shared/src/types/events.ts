@@ -88,6 +88,9 @@ export type ClientToServerEvents = {
 
   // Chat
   'chat-message': (data: { message: string }) => void;
+
+  // Replace disconnected player with bot
+  'replace-with-bot': (data: { position: PlayerPosition }) => void;
 };
 
 /**
@@ -145,6 +148,11 @@ export type ServerToClientEvents = {
 
   // Chat
   'room-chat': (data: { message: ChatMessage }) => void;
+
+  // Player disconnect/reconnect during game
+  'player-disconnected': (data: { position: PlayerPosition; playerName: string; disconnectedAt: number }) => void;
+  'player-reconnected': (data: { position: PlayerPosition; playerName: string }) => void;
+  'player-replaced': (data: { position: PlayerPosition }) => void;
 };
 
 /**

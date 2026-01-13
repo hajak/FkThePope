@@ -218,6 +218,19 @@ export function useSocket() {
       useVideoStore.getState().setPlayerMuteStatus(player, isMuted);
     });
 
+    // Player disconnect/reconnect during game
+    socket.on('player-disconnected', ({ playerName }) => {
+      showToast(`${playerName} disconnected`, 'warning');
+    });
+
+    socket.on('player-reconnected', ({ playerName }) => {
+      showToast(`${playerName} reconnected`, 'success');
+    });
+
+    socket.on('player-replaced', () => {
+      showToast(`Player replaced with bot`, 'info');
+    });
+
     // Connect
     connectSocket();
 
@@ -248,6 +261,9 @@ export function useSocket() {
       socket.off('webrtc-ice-candidate');
       socket.off('player-mute-status');
       socket.off('room-chat');
+      socket.off('player-disconnected');
+      socket.off('player-reconnected');
+      socket.off('player-replaced');
       unsubscribeConnection();
       cleanup();
       useVideoStore.getState().cleanup();
@@ -305,6 +321,10 @@ export function useGameActions() {
     getSocket().emit('remove-bot', { position });
   }, []);
 
+  const replaceWithBot = useCallback((position: PlayerPosition) => {
+    getSocket().emit('replace-with-bot', { position });
+  }, []);
+
   const continueGame = useCallback(() => {
     getSocket().emit('continue-game');
   }, []);
@@ -336,6 +356,7 @@ export function useGameActions() {
     playCard,
     addBot,
     removeBot,
+    replaceWithBot,
     continueGame,
     approvePlayer,
     rejectPlayer,

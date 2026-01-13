@@ -9,6 +9,17 @@
   overflow: hidden;
 }
 
+/* Version badge - subtle, upper right */
+.version-badge {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 500;
+  z-index: 100;
+}
+
 /* Decorative background elements */
 .lobby-page::before {
   content: '';
@@ -226,6 +237,52 @@
 @keyframes pulse {
   0%, 100% { opacity: 0.7; }
   50% { opacity: 1; }
+}
+
+/* Rejoin section */
+.rejoin-section {
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.rejoin-message {
+  color: var(--color-text);
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.rejoin-message strong {
+  color: var(--color-accent);
+}
+
+.rejoin-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.rejoin-actions .btn-primary {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+}
+
+.rejoin-actions .btn-secondary {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.rejoin-actions .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* Room list screen */
