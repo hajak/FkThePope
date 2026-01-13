@@ -209,15 +209,7 @@ export function GamePage() {
 
       {/* Player hand */}
       <div className="hand-area">
-        <Hand
-          cards={myHand}
-          legalMoves={legalMoves}
-          selectedCard={selectedCard}
-          onCardSelect={handleCardSelect}
-          isMyTurn={isMyTurn}
-        />
-
-        {/* Play buttons */}
+        {/* Play buttons - above cards */}
         <div className="play-actions-container">
           {selectedCard && isMyTurn ? (
             <div className="play-actions">
@@ -238,6 +230,14 @@ export function GamePage() {
             </div>
           )}
         </div>
+
+        <Hand
+          cards={myHand}
+          legalMoves={legalMoves}
+          selectedCard={selectedCard}
+          onCardSelect={handleCardSelect}
+          isMyTurn={isMyTurn}
+        />
       </div>
 
       {/* Hand result modal */}
@@ -333,6 +333,8 @@ export function GamePage() {
                 </ul>
               </div>
             </div>
+
+            <div className="version-info">Version 1.1.0</div>
 
             <button className="btn-primary" onClick={() => setShowRules(false)}>
               Back to Game

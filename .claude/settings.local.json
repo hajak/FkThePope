@@ -29,7 +29,14 @@
       "Bash(pnpm turbo build:*)",
       "Bash(pkill:*)",
       "Bash(pnpm run typecheck:*)",
-      "Bash(pnpm run build:*)"
+      "Bash(pnpm run build:*)",
+      "Bash(git branch:*)",
+      "Bash(git config:*)",
+      "WebFetch(domain:online-whist.up.railway.app)",
+      "Bash(npm search:*)",
+      "Bash(npx -y @anthropic-ai/create-mcp --help)",
+      "Bash(npm view:*)",
+      "Bash(pnpm add:*)"
     ]
   }
 }
