@@ -37,7 +37,11 @@
       "Bash(npx -y @anthropic-ai/create-mcp --help)",
       "Bash(npm view:*)",
       "Bash(pnpm add:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "WebFetch(domain:fkthepope-production.up.railway.app)",
+      "WebFetch(domain:whistgame.up.railway.app)",
+      "WebFetch(domain:whist-online.up.railway.app)",
+      "WebFetch(domain:railway.com)"
     ]
   }
 }
