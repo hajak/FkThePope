@@ -379,7 +379,7 @@ export function GamePage() {
               </div>
             </div>
 
-            <div className="version-info">Version 1.24</div>
+            <div className="version-info">Version 1.25</div>
 
             <button className="btn-primary" onClick={() => setShowRules(false)}>
               Back to Game
