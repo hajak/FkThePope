@@ -104,16 +104,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   addPlayedCard: (player, card, faceDown) =>
     set((state) => {
-      if (!state.gameState?.currentHand?.currentTrick) return state;
+      // Need at least gameState and currentHand to add a card
+      if (!state.gameState?.currentHand) return state;
 
       const newCard: PlayedCard = { card, playedBy: player, faceDown, playedAt: Date.now() };
-      const currentCards = state.gameState.currentHand.currentTrick.cards;
+
+      // Get current trick or initialize an empty one (handles race condition)
+      const currentTrick = state.gameState.currentHand.currentTrick ?? {
+        cards: [],
+        leadSuit: card.suit, // First card sets the lead suit
+        leader: player, // First player to play leads
+        currentPlayer: player,
+        trickNumber: (state.gameState.currentHand.completedTricks?.length ?? 0) + 1,
+      };
+
+      const currentCards = currentTrick.cards;
 
       // Don't add if already present
       if (currentCards.some((c) => c.playedBy === player)) return state;
 
       const updatedTrick = {
-        ...state.gameState.currentHand.currentTrick,
+        ...currentTrick,
         cards: [...currentCards, newCard],
       };
 
