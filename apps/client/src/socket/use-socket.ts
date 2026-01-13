@@ -72,9 +72,9 @@ export function useSocket() {
       setRooms(rooms);
     });
 
-    socket.on('room-joined', ({ roomId, roomName, position, players }) => {
+    socket.on('room-joined', ({ roomId, roomName, position, players, isHost }) => {
       setRoom(roomId, position);
-      setCurrentRoom({ id: roomId, name: roomName, players });
+      setCurrentRoom({ id: roomId, name: roomName, players, isHost });
       // Store session for reconnection
       const playerName = useGameStore.getState().playerName;
       storeSession(roomId, position, playerName);

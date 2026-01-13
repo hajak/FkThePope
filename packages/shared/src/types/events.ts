@@ -103,7 +103,7 @@ export type ServerToClientEvents = {
 
   // Lobby events
   'lobby-state': (data: { rooms: RoomInfo[] }) => void;
-  'room-joined': (data: { roomId: string; roomName: string; position: PlayerPosition; players: Array<PlayerView | null> }) => void;
+  'room-joined': (data: { roomId: string; roomName: string; position: PlayerPosition; players: Array<PlayerView | null>; isHost: boolean }) => void;
   'room-updated': (data: { players: Array<PlayerView | null> }) => void;
   'room-left': () => void;
 

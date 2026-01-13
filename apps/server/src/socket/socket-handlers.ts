@@ -188,6 +188,7 @@ function handleCreateRoom(
     roomName: room.name,
     position: 'south',
     players: getPlayerViews(room.id),
+    isHost: true, // Creator is always host
   });
 
   // Broadcast updated room list
@@ -293,6 +294,7 @@ function handleRejoinRoom(
     roomName: room.name,
     position,
     players: getPlayerViews(roomId),
+    isHost: room.hostId === socket.id,
   });
 
   // If game is in progress, send current game state
@@ -403,7 +405,12 @@ function handleStartGame(socket: GameSocket, io: GameServer): void {
     return;
   }
 
-  // Any player in the room can start the game (not just host)
+  // Only host can start the game
+  if (room.hostId !== socket.id) {
+    socket.emit('error', { message: 'Only the room creator can start the game', code: 'NOT_HOST' });
+    return;
+  }
+
   if (!lobbyManager.canStartGame(roomId)) {
     socket.emit('error', { message: 'Need 4 players to start', code: 'NOT_ENOUGH_PLAYERS' });
     return;
@@ -706,6 +713,7 @@ function handleApprovePlayer(
       roomName: room.name,
       position: position as PlayerPosition,
       players: getPlayerViews(roomId),
+      isHost: false, // Approved players are never host
     });
   }
 

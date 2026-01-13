@@ -10,6 +10,7 @@ interface LobbyStore {
     id: string;
     name: string;
     players: Array<PlayerView | null>;
+    isHost: boolean;
   } | null;
 
   // Pending join state (for players waiting for approval)
@@ -26,7 +27,7 @@ interface LobbyStore {
 
   // Actions
   setRooms: (rooms: RoomInfo[]) => void;
-  setCurrentRoom: (room: { id: string; name: string; players: Array<PlayerView | null> } | null) => void;
+  setCurrentRoom: (room: { id: string; name: string; players: Array<PlayerView | null>; isHost: boolean } | null) => void;
   updateRoomPlayers: (players: Array<PlayerView | null>) => void;
   setPendingJoin: (pending: { roomId: string; roomName: string } | null) => void;
   setPendingPlayers: (pending: PendingPlayer[]) => void;

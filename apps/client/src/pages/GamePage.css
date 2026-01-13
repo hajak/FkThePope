@@ -230,11 +230,13 @@
 /* Hand area */
 .hand-area {
   padding: 10px 20px 20px;
+  padding-top: 25px; /* Room for selected card to raise */
   background: linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .play-actions-container {
@@ -896,13 +898,15 @@
     min-height: 0;
   }
 
-  /* Hand area - compact, at bottom */
+  /* Hand area - compact, at bottom, fixed height to prevent layout shift */
   .hand-area {
     flex-shrink: 0;
     padding: 4px 2px;
+    padding-top: 20px; /* Room for selected card */
     padding-bottom: calc(4px + env(safe-area-inset-bottom));
     gap: 4px;
     background: transparent;
+    min-height: 140px; /* Fixed height to prevent layout shift */
   }
 
   .play-actions-container {

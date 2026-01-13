@@ -24,7 +24,7 @@ function generateRoomName(): string {
   return `${adj} ${noun}'s ${place}`;
 }
 
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.20';
 
 export function LobbyPage() {
   const [playerName, setPlayerName] = useState('');
@@ -396,13 +396,19 @@ export function LobbyPage() {
             <button className="btn-secondary" onClick={leaveRoom}>
               Leave Room
             </button>
-            <button
-              className="btn-primary"
-              onClick={handleStartGame}
-              disabled={filledPositions < 4}
-            >
-              {filledPositions < 4 ? `Need ${4 - filledPositions} more players` : 'Start Game'}
-            </button>
+            {currentRoom.isHost ? (
+              <button
+                className="btn-primary"
+                onClick={handleStartGame}
+                disabled={filledPositions < 4}
+              >
+                {filledPositions < 4 ? `Need ${4 - filledPositions} more players` : 'Start Game'}
+              </button>
+            ) : (
+              <span className="waiting-host">
+                {filledPositions < 4 ? `Waiting for ${4 - filledPositions} more players` : 'Waiting for host to start'}
+              </span>
+            )}
           </div>
         </div>
       </div>

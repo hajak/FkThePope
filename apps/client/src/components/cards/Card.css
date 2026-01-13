@@ -160,9 +160,11 @@
     display: none;
   }
 
-  /* Card selection on mobile */
+  /* Card selection on mobile - lift card without rotation change */
   .card.selected {
-    transform: translateY(-10px);
+    transform: translateY(-15px) scale(1.05);
+    z-index: 100;
+    box-shadow: 0 8px 20px rgba(233, 69, 96, 0.5);
   }
 
   .card.clickable:hover:not(.disabled) {
