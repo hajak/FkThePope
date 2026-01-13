@@ -446,6 +446,16 @@
     border-radius: 80px / 40px;
     border-width: 2px;
     max-width: 600px;
+    overflow: visible;
+  }
+
+  .game-table .table-center {
+    overflow: visible;
+    z-index: 10;
+  }
+
+  .game-table .trick-pile {
+    z-index: 20;
   }
 
   .seat {

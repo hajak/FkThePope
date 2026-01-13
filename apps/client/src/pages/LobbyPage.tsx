@@ -24,7 +24,7 @@ function generateRoomName(): string {
   return `${adj} ${noun}'s ${place}`;
 }
 
-const APP_VERSION = '1.26';
+const APP_VERSION = '1.27';
 
 export function LobbyPage() {
   const [playerName, setPlayerName] = useState('');

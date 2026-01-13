@@ -1167,6 +1167,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: visible;
+  }
+
+  .game-page.is-mobile .game-table {
+    overflow: visible;
+  }
+
+  .game-page.is-mobile .table-center {
+    overflow: visible;
+  }
+
+  .game-page.is-mobile .trick-pile {
+    overflow: visible;
   }
 
   .game-page.is-mobile .hand-area {
