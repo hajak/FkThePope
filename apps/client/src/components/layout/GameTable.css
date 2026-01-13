@@ -437,36 +437,44 @@
   }
 }
 
-/* Landscape on mobile */
-@media (max-height: 500px) and (orientation: landscape) {
+/* Landscape on mobile - optimized for touch */
+@media screen and (max-width: 1024px) and (orientation: landscape) {
   .game-table {
-    height: 220px;
+    width: 85%;
+    height: 70%;
+    max-height: 280px;
     border-radius: 100px / 50px;
     border-width: 2px;
-    max-width: 600px;
+    max-width: 700px;
   }
 
   .seat {
-    padding: 3px;
+    padding: 4px;
     gap: 2px;
     min-width: 80px;
   }
 
   .seat-info {
-    padding: 2px 4px;
-    min-width: 50px;
+    padding: 4px 8px;
+    min-width: 60px;
+    background: rgba(0, 0, 0, 0.8);
   }
 
   .seat-name {
-    font-size: 9px;
+    font-size: 11px;
+    font-weight: 600;
   }
 
   .seat-tricks {
-    font-size: 8px;
+    font-size: 10px;
   }
 
   .video-placeholder {
-    width: 40px;
-    height: 30px;
+    display: none !important;
+  }
+
+  .card-count,
+  .seat-cards {
+    display: none !important;
   }
 }

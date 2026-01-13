@@ -29,6 +29,27 @@ export function GamePage() {
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check for mobile and portrait orientation
+  useEffect(() => {
+    const checkOrientation = () => {
+      const mobile = window.innerWidth <= 1024 && 'ontouchstart' in window;
+      const portrait = window.innerHeight > window.innerWidth;
+      setIsMobile(mobile);
+      setIsPortrait(mobile && portrait);
+    };
+
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, []);
 
   // Video state
   const localStream = useVideoStore((s) => s.localStream);
@@ -106,7 +127,19 @@ export function GamePage() {
   const playerNames = gameState.players;
 
   return (
-    <div className="game-page">
+    <div className={`game-page ${isMobile ? 'is-mobile' : ''}`}>
+      {/* Portrait mode overlay - tells user to rotate device */}
+      {isPortrait && (
+        <div className="rotate-device-overlay">
+          <div className="rotate-device-content">
+            <div className="rotate-icon">📱</div>
+            <h2>Rotate Your Device</h2>
+            <p>Please rotate your phone to landscape mode for the best experience</p>
+            <div className="rotate-animation">↻</div>
+          </div>
+        </div>
+      )}
+
       {/* Game header - simplified */}
       <header className="game-header">
         <div className="game-logo">
@@ -346,7 +379,7 @@ export function GamePage() {
               </div>
             </div>
 
-            <div className="version-info">Version 1.22</div>
+            <div className="version-info">Version 1.23</div>
 
             <button className="btn-primary" onClick={() => setShowRules(false)}>
               Back to Game

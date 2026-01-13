@@ -1085,3 +1085,131 @@
     transform: scale(0.98);
   }
 }
+
+/* ==================== */
+/* Rotate Device Overlay */
+/* ==================== */
+
+.rotate-device-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.rotate-device-content {
+  text-align: center;
+  padding: 40px;
+  color: var(--color-text);
+}
+
+.rotate-icon {
+  font-size: 80px;
+  margin-bottom: 20px;
+  transform: rotate(90deg);
+  display: inline-block;
+}
+
+.rotate-device-content h2 {
+  font-size: 24px;
+  margin: 0 0 12px;
+  color: var(--color-text);
+}
+
+.rotate-device-content p {
+  font-size: 16px;
+  color: var(--color-text-muted);
+  margin: 0 0 24px;
+}
+
+.rotate-animation {
+  font-size: 48px;
+  animation: rotateHint 2s ease-in-out infinite;
+  color: var(--color-accent);
+}
+
+@keyframes rotateHint {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(90deg); }
+}
+
+/* ==================== */
+/* Mobile Landscape Layout */
+/* ==================== */
+
+/* Mobile landscape - optimized for touch play */
+@media screen and (max-width: 1024px) and (orientation: landscape) {
+  .game-page.is-mobile {
+    flex-direction: row;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .game-page.is-mobile .game-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+  }
+
+  .game-page.is-mobile .table-area {
+    flex: 1;
+    padding: 40px 10px 10px;
+    padding-left: calc(10px + env(safe-area-inset-left));
+    padding-right: calc(10px + env(safe-area-inset-right));
+  }
+
+  .game-page.is-mobile .hand-area {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    padding-left: calc(8px + env(safe-area-inset-left));
+    padding-right: calc(8px + env(safe-area-inset-right));
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+    min-height: auto;
+  }
+
+  .game-page.is-mobile .hand {
+    min-height: auto;
+    padding: 4px;
+  }
+
+  /* Larger, more spread cards in landscape */
+  .game-page.is-mobile .hand .card-medium {
+    width: 65px;
+    height: 91px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+
+  .game-page.is-mobile .hand-card {
+    margin-left: -30px;
+  }
+
+  .game-page.is-mobile .hand-card:first-child {
+    margin-left: 0;
+  }
+
+  /* Play button positioning */
+  .game-page.is-mobile .play-actions-container {
+    min-height: auto;
+    margin-bottom: 4px;
+  }
+
+  .game-page.is-mobile .play-btn {
+    padding: 10px 24px;
+    font-size: 14px;
+  }
+}
