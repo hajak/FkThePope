@@ -126,18 +126,18 @@
   );
 }
 
-/* Mobile card adjustments - make rank/suit more prominent */
-@media (max-width: 480px) {
+/* Mobile card adjustments - compact but readable */
+@media screen and (max-width: 767px) {
   .card-corner {
-    padding: 2px 3px;
+    padding: 1px 2px;
   }
 
   .card-rank {
-    font-size: 1.1em;
+    font-size: 1em;
   }
 
   .card-suit {
-    font-size: 0.8em;
+    font-size: 0.7em;
   }
 
   .card-center {
@@ -145,17 +145,26 @@
   }
 
   .card-center-rank {
-    font-size: 1.6em;
+    font-size: 1.4em;
     line-height: 1;
   }
 
   .card-suit-large {
-    font-size: 1.2em;
+    font-size: 1em;
     line-height: 1;
   }
 
-  /* Hide bottom corner on very small cards to reduce clutter */
+  /* Hide bottom corner on mobile */
   .card-corner.bottom-right {
     display: none;
+  }
+
+  /* Card selection on mobile */
+  .card.selected {
+    transform: translateY(-10px);
+  }
+
+  .card.clickable:hover:not(.disabled) {
+    transform: translateY(-4px);
   }
 }
