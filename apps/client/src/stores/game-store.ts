@@ -69,7 +69,56 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setRoom: (roomId, position) =>
     set({ roomId, myPosition: position }),
 
-  setGameState: (state) => set({ gameState: state }),
+  setGameState: (state) => {
+    if (!state) {
+      set({ gameState: state });
+      return;
+    }
+
+    // Merge current trick cards to avoid race condition where card-played arrives
+    // before game-state and then game-state overwrites the card
+    const currentState = get();
+    const existingTrick = currentState.gameState?.currentHand?.currentTrick;
+    const newTrick = state.currentHand?.currentTrick;
+
+    // If we have existing trick cards that aren't in the new state, preserve them
+    if (existingTrick?.cards?.length && state.currentHand) {
+      const existingCards = existingTrick.cards;
+      const newCards = newTrick?.cards ?? [];
+
+      // Merge: add any cards from existing trick that aren't in new trick
+      const mergedCards = [...newCards];
+      for (const existingCard of existingCards) {
+        if (!mergedCards.some(c => c.playedBy === existingCard.playedBy)) {
+          mergedCards.push(existingCard);
+        }
+      }
+
+      // Only merge if we have more cards locally
+      if (mergedCards.length > newCards.length && mergedCards[0]) {
+        const firstCard = mergedCards[0];
+        set({
+          gameState: {
+            ...state,
+            currentHand: {
+              ...state.currentHand,
+              currentTrick: {
+                cards: mergedCards,
+                leadSuit: newTrick?.leadSuit ?? firstCard.card.suit,
+                leader: newTrick?.leader ?? firstCard.playedBy,
+                currentPlayer: newTrick?.currentPlayer ?? mergedCards[mergedCards.length - 1]?.playedBy ?? firstCard.playedBy,
+                trickNumber: newTrick?.trickNumber ?? (state.currentHand.completedTricks?.length ?? 0) + 1,
+                winner: newTrick?.winner,
+              },
+            },
+          },
+        });
+        return;
+      }
+    }
+
+    set({ gameState: state });
+  },
 
   // Set game state but preserve current trick if we're animating
   setGameStatePreservingTrick: (state) => {
