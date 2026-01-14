@@ -78,11 +78,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Merge current trick cards to avoid race condition where card-played arrives
     // before game-state and then game-state overwrites the card
     const currentState = get();
-    const existingTrick = currentState.gameState?.currentHand?.currentTrick;
-    const newTrick = state.currentHand?.currentTrick;
+    const existingHand = currentState.gameState?.currentHand;
+    const existingTrick = existingHand?.currentTrick;
+    const newHand = state.currentHand;
+    const newTrick = newHand?.currentTrick;
+
+    // Only merge if we're on the SAME hand and trick number
+    // Don't merge cards from a previous hand/trick into a new one
+    const sameHand = existingHand?.number === newHand?.number;
+    const sameTrick = existingTrick?.trickNumber === newTrick?.trickNumber ||
+      // If new trick has no trickNumber yet, check if it's the first trick of same hand
+      (!newTrick?.trickNumber && sameHand && existingTrick?.trickNumber === 1);
 
     // If we have existing trick cards that aren't in the new state, preserve them
-    if (existingTrick?.cards?.length && state.currentHand) {
+    // BUT only if we're on the same hand and trick
+    if (existingTrick?.cards?.length && newHand && sameHand && sameTrick) {
       const existingCards = existingTrick.cards;
       const newCards = newTrick?.cards ?? [];
 
@@ -101,13 +111,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
           gameState: {
             ...state,
             currentHand: {
-              ...state.currentHand,
+              ...newHand,
               currentTrick: {
                 cards: mergedCards,
                 leadSuit: newTrick?.leadSuit ?? firstCard.card.suit,
                 leader: newTrick?.leader ?? firstCard.playedBy,
                 currentPlayer: newTrick?.currentPlayer ?? mergedCards[mergedCards.length - 1]?.playedBy ?? firstCard.playedBy,
-                trickNumber: newTrick?.trickNumber ?? (state.currentHand.completedTricks?.length ?? 0) + 1,
+                trickNumber: newTrick?.trickNumber ?? (newHand.completedTricks?.length ?? 0) + 1,
                 winner: newTrick?.winner,
               },
             },
