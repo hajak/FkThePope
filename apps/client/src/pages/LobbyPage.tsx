@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useGameStore } from '../stores/game-store';
 import { useLobbyStore } from '../stores/lobby-store';
 import { useGameActions } from '../socket/use-socket';
-import { getStoredSession, clearSession, getSocket } from '../socket/socket-client';
+import { getStoredSession, clearSession, getSocket, APP_VERSION } from '../socket/socket-client';
 import type { PlayerPosition } from '@fkthepope/shared';
 import './LobbyPage.css';
 
@@ -23,8 +23,6 @@ function generateRoomName(): string {
   const place = places[Math.floor(Math.random() * places.length)];
   return `${adj} ${noun}'s ${place}`;
 }
-
-const APP_VERSION = '1.29';
 
 export function LobbyPage() {
   const [playerName, setPlayerName] = useState('');

@@ -3,12 +3,27 @@ import type { PlayerPosition } from '@fkthepope/shared';
 export interface SessionData {
   sessionId: string;
   clientId: string;
+  playerName: string | null;
   startTime: number;
   endTime: number | null;
   deviceType: 'mobile' | 'desktop';
   country: string | null;
   gamesPlayed: number;
   roomsJoined: string[];
+  version: string;
+}
+
+// Player tracking - identified by hash of IP + name
+export interface PlayerData {
+  playerId: string; // hash of IP + name
+  playerName: string;
+  firstSeen: number;
+  lastSeen: number;
+  totalSessions: number;
+  totalGamesPlayed: number;
+  totalPlayTime: number; // seconds
+  lastCountry: string | null;
+  lastDeviceType: 'mobile' | 'desktop';
 }
 
 export interface GameEvent {
@@ -47,25 +62,38 @@ export interface PersistedAnalytics {
   }>;
   completedSessions: Array<{
     clientId: string;
+    playerName: string | null;
     startTime: number;
     endTime: number;
     deviceType: 'mobile' | 'desktop';
     country: string | null;
     gamesPlayed: number;
+    version: string;
   }>;
+  players: PlayerData[];
   recentEvents: GameEvent[];
   lastSaved: number;
 }
+
+export type TimePeriod = '7d' | '30d' | 'all';
 
 export interface DashboardResponse {
   // Real-time
   activeGames: number;
   activeSessions: number;
 
-  // Totals
+  // Totals (all time)
   totalGamesPlayed: number;
   totalUniqueUsers: number;
-  averageSessionDuration: number; // seconds
+
+  // Period-based stats (configurable)
+  periodStats: {
+    period: TimePeriod;
+    gamesPlayed: number;
+    uniqueUsers: number;
+    averageSessionDuration: number; // seconds
+    totalPlayTime: number; // seconds
+  };
 
   // Time-based
   gamesLast24Hours: number;
@@ -75,15 +103,30 @@ export interface DashboardResponse {
   // Breakdowns
   deviceBreakdown: { mobile: number; desktop: number };
   countryBreakdown: Record<string, number>;
+  versionBreakdown: Record<string, number>;
   peakHours: Record<number, number>;
 
   // Recent activity
   recentSessions: Array<{
     clientId: string;
+    playerName: string | null;
     startTime: number;
     endTime: number | null;
     deviceType: 'mobile' | 'desktop';
     country: string | null;
     duration: number;
+  }>;
+
+  // Player stats
+  players: Array<{
+    playerId: string;
+    playerName: string;
+    firstSeen: number;
+    lastSeen: number;
+    totalSessions: number;
+    totalGamesPlayed: number;
+    totalPlayTime: number;
+    lastCountry: string | null;
+    lastDeviceType: 'mobile' | 'desktop';
   }>;
 }

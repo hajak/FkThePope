@@ -5,6 +5,7 @@ import { useVideoStore } from '../stores/video-store';
 import { GameTable } from '../components/layout/GameTable';
 import { Hand } from '../components/cards/Hand';
 import { HandResultModal } from '../components/modals/HandResultModal';
+import { APP_VERSION } from '../socket/socket-client';
 import type { Card, PlayerPosition } from '@fkthepope/shared';
 import './GamePage.css';
 
@@ -379,7 +380,7 @@ export function GamePage() {
               </div>
             </div>
 
-            <div className="version-info">Version 1.29</div>
+            <div className="version-info">Version {APP_VERSION}</div>
 
             <button className="btn-primary" onClick={() => setShowRules(false)}>
               Back to Game

@@ -3,6 +3,9 @@ import type { ClientToServerEvents, ServerToClientEvents } from '@fkthepope/shar
 
 type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
+// App version - must match server's required version
+export const APP_VERSION = '1.31';
+
 // In production, connect to same origin; in dev, use localhost:3001
 const SOCKET_URL = import.meta.env.PROD
   ? window.location.origin
@@ -58,6 +61,7 @@ export function getSocket(): GameSocket {
       auth: {
         clientId: getClientId(),
         deviceType: getDeviceType(),
+        version: APP_VERSION,
       },
     });
 
@@ -100,6 +104,14 @@ export function getSocket(): GameSocket {
 
     socket.io.on('reconnect_failed', () => {
       notifyConnectionChange(false);
+    });
+
+    // Handle version mismatch - force reload to get latest version
+    socket.on('version-mismatch', ({ clientVersion, requiredVersion }) => {
+      console.log(`[Socket] Version mismatch: client ${clientVersion}, required ${requiredVersion}`);
+      // Show alert and reload
+      alert(`Your game is outdated (v${clientVersion}). The page will reload to get the latest version (v${requiredVersion}).`);
+      window.location.reload();
     });
   }
   return socket;

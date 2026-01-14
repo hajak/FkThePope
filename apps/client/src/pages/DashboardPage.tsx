@@ -2,13 +2,27 @@ import { useState, useEffect } from 'react';
 import { useAnalyticsStore } from '../stores/analytics-store';
 import './DashboardPage.css';
 
+type TimePeriod = '7d' | '30d' | 'all';
+
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
   return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
 }
 
-function StatCard({ title, value, subtitle }: { title: string; value: string | number; subtitle?: string }) {
+function formatDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString();
+}
+
+function PeriodLabel({ period }: { period: TimePeriod }) {
+  switch (period) {
+    case '7d': return <>Last 7 Days</>;
+    case '30d': return <>Last 30 Days</>;
+    case 'all': return <>All Time</>;
+  }
+}
+
+function StatCard({ title, value, subtitle }: { title: string; value: string | number; subtitle?: React.ReactNode }) {
   return (
     <div className="stat-card">
       <div className="stat-value">{value}</div>
@@ -96,7 +110,35 @@ function CountryTable({ data, title }: { data: Record<string, number>; title: st
   );
 }
 
-function SessionsTable({ data }: { data: Array<{ clientId: string; startTime: number; endTime: number | null; deviceType: string; country: string | null; duration: number }> }) {
+function VersionTable({ data, title }: { data: Record<string, number>; title: string }) {
+  const sorted = Object.entries(data)
+    .sort((a, b) => {
+      // Sort by version number (descending), with 'unknown' at the end
+      if (a[0] === 'unknown') return 1;
+      if (b[0] === 'unknown') return -1;
+      return b[0].localeCompare(a[0], undefined, { numeric: true });
+    });
+
+  return (
+    <div className="chart-container">
+      <h3>{title}</h3>
+      <div className="version-table">
+        {sorted.length === 0 ? (
+          <div className="no-data">No data yet</div>
+        ) : (
+          sorted.map(([version, count]) => (
+            <div key={version} className="version-row">
+              <span className="version-name">v{version}</span>
+              <span className="version-count">{count}</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SessionsTable({ data }: { data: Array<{ clientId: string; playerName: string | null; startTime: number; endTime: number | null; deviceType: string; country: string | null; duration: number }> }) {
   return (
     <div className="chart-container sessions-container">
       <h3>Recent Sessions</h3>
@@ -107,12 +149,46 @@ function SessionsTable({ data }: { data: Array<{ clientId: string; startTime: nu
           data.map((session, i) => (
             <div key={i} className={`session-row ${!session.endTime ? 'active' : ''}`}>
               <span className="session-device">{session.deviceType === 'mobile' ? '📱' : '💻'}</span>
-              <span className="session-id">{session.clientId}</span>
+              <span className="session-name">{session.playerName || 'Guest'}</span>
               <span className="session-country">{session.country || '?'}</span>
               <span className="session-duration">{formatDuration(session.duration)}</span>
               <span className="session-status">{session.endTime ? '' : '🟢'}</span>
             </div>
           ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PlayersTable({ data }: { data: Array<{ playerId: string; playerName: string; firstSeen: number; lastSeen: number; totalSessions: number; totalGamesPlayed: number; totalPlayTime: number; lastCountry: string | null; lastDeviceType: 'mobile' | 'desktop' }> }) {
+  return (
+    <div className="chart-container players-container">
+      <h3>Player Statistics</h3>
+      <div className="players-table">
+        {data.length === 0 ? (
+          <div className="no-data">No player data yet</div>
+        ) : (
+          <>
+            <div className="players-header">
+              <span className="player-name-col">Name</span>
+              <span className="player-sessions-col">Sessions</span>
+              <span className="player-games-col">Games</span>
+              <span className="player-time-col">Play Time</span>
+              <span className="player-last-col">Last Seen</span>
+            </div>
+            {data.map((player) => (
+              <div key={player.playerId} className="player-row">
+                <span className="player-name-col">
+                  {player.lastDeviceType === 'mobile' ? '📱' : '💻'} {player.playerName}
+                </span>
+                <span className="player-sessions-col">{player.totalSessions}</span>
+                <span className="player-games-col">{player.totalGamesPlayed}</span>
+                <span className="player-time-col">{formatDuration(player.totalPlayTime)}</span>
+                <span className="player-last-col">{formatDate(player.lastSeen)}</span>
+              </div>
+            ))}
+          </>
         )}
       </div>
     </div>
@@ -127,9 +203,11 @@ export function DashboardPage() {
     isLoading,
     error,
     lastUpdated,
+    selectedPeriod,
     login,
     logout,
     fetchDashboard,
+    setSelectedPeriod,
     clearError,
   } = useAnalyticsStore();
 
@@ -217,7 +295,7 @@ export function DashboardPage() {
           )}
         </div>
         <div className="header-right">
-          <button className="btn-secondary" onClick={fetchDashboard} disabled={isLoading}>
+          <button className="btn-secondary" onClick={() => fetchDashboard()} disabled={isLoading}>
             {isLoading ? 'Refreshing...' : 'Refresh'}
           </button>
           <button className="btn-secondary" onClick={logout}>
@@ -235,6 +313,19 @@ export function DashboardPage() {
 
       {dashboardData && (
         <>
+          {/* Period selector */}
+          <div className="period-selector">
+            <label>Time Period:</label>
+            <select
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value as TimePeriod)}
+            >
+              <option value="7d">Last 7 Days</option>
+              <option value="30d">Last 30 Days</option>
+              <option value="all">All Time</option>
+            </select>
+          </div>
+
           {/* Stats cards */}
           <div className="stats-grid">
             <StatCard
@@ -258,19 +349,24 @@ export function DashboardPage() {
               subtitle="All time"
             />
             <StatCard
-              title="Games (24h)"
-              value={dashboardData.gamesLast24Hours}
-              subtitle="Last 24 hours"
+              title="Period Games"
+              value={dashboardData.periodStats?.gamesPlayed ?? 0}
+              subtitle={<PeriodLabel period={selectedPeriod} />}
             />
             <StatCard
-              title="Games (7d)"
-              value={dashboardData.gamesLast7Days}
-              subtitle="Last 7 days"
+              title="Period Users"
+              value={dashboardData.periodStats?.uniqueUsers ?? 0}
+              subtitle={<PeriodLabel period={selectedPeriod} />}
             />
             <StatCard
               title="Avg Session"
-              value={formatDuration(dashboardData.averageSessionDuration)}
-              subtitle="Duration"
+              value={formatDuration(dashboardData.periodStats?.averageSessionDuration ?? 0)}
+              subtitle={<PeriodLabel period={selectedPeriod} />}
+            />
+            <StatCard
+              title="Total Play Time"
+              value={formatDuration(dashboardData.periodStats?.totalPlayTime ?? 0)}
+              subtitle={<PeriodLabel period={selectedPeriod} />}
             />
           </div>
 
@@ -288,8 +384,15 @@ export function DashboardPage() {
               data={dashboardData.countryBreakdown}
               title="Top Countries"
             />
+            <VersionTable
+              data={dashboardData.versionBreakdown || {}}
+              title="Client Versions"
+            />
             <SessionsTable data={dashboardData.recentSessions} />
           </div>
+
+          {/* Players table */}
+          <PlayersTable data={dashboardData.players || []} />
         </>
       )}
     </div>

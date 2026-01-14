@@ -19,9 +19,14 @@ export function createAnalyticsRouter(): Router {
   router.post('/logout', analyticsLogoutHandler);
 
   // GET /api/analytics/dashboard - Main dashboard data
-  router.get('/dashboard', (_req, res) => {
+  // Query params: ?period=7d|30d|all (default: 7d)
+  router.get('/dashboard', (req, res) => {
     const manager = AnalyticsManager.getInstance();
-    const data = manager.getDashboardData();
+    const period = (req.query.period as string) || '7d';
+    // Validate period
+    const validPeriods = ['7d', '30d', 'all'];
+    const validatedPeriod = validPeriods.includes(period) ? period as '7d' | '30d' | 'all' : '7d';
+    const data = manager.getDashboardData(validatedPeriod);
     res.json(data);
   });
 

@@ -1,25 +1,50 @@
 import { create } from 'zustand';
 
+type TimePeriod = '7d' | '30d' | 'all';
+
+interface PeriodStats {
+  period: TimePeriod;
+  gamesPlayed: number;
+  uniqueUsers: number;
+  averageSessionDuration: number;
+  totalPlayTime: number;
+}
+
+interface PlayerStats {
+  playerId: string;
+  playerName: string;
+  firstSeen: number;
+  lastSeen: number;
+  totalSessions: number;
+  totalGamesPlayed: number;
+  totalPlayTime: number;
+  lastCountry: string | null;
+  lastDeviceType: 'mobile' | 'desktop';
+}
+
 interface DashboardData {
   activeGames: number;
   activeSessions: number;
   totalGamesPlayed: number;
   totalUniqueUsers: number;
-  averageSessionDuration: number;
+  periodStats: PeriodStats;
   gamesLast24Hours: number;
   gamesLast7Days: number;
   gamesPerDay: Array<{ date: string; count: number }>;
   deviceBreakdown: { mobile: number; desktop: number };
   countryBreakdown: Record<string, number>;
+  versionBreakdown: Record<string, number>;
   peakHours: Record<number, number>;
   recentSessions: Array<{
     clientId: string;
+    playerName: string | null;
     startTime: number;
     endTime: number | null;
     deviceType: 'mobile' | 'desktop';
     country: string | null;
     duration: number;
   }>;
+  players: PlayerStats[];
 }
 
 interface AnalyticsStore {
@@ -29,10 +54,12 @@ interface AnalyticsStore {
   isLoading: boolean;
   error: string | null;
   lastUpdated: number | null;
+  selectedPeriod: TimePeriod;
 
   login: (password: string) => Promise<boolean>;
   logout: () => void;
-  fetchDashboard: () => Promise<void>;
+  fetchDashboard: (period?: TimePeriod) => Promise<void>;
+  setSelectedPeriod: (period: TimePeriod) => void;
   clearError: () => void;
 }
 
@@ -51,6 +78,13 @@ export const useAnalyticsStore = create<AnalyticsStore>((set, get) => ({
   isLoading: false,
   error: null,
   lastUpdated: null,
+  selectedPeriod: '7d',
+
+  setSelectedPeriod: (period: TimePeriod) => {
+    set({ selectedPeriod: period });
+    // Fetch dashboard with new period
+    get().fetchDashboard(period);
+  },
 
   login: async (password: string) => {
     set({ isLoading: true, error: null });
@@ -87,16 +121,17 @@ export const useAnalyticsStore = create<AnalyticsStore>((set, get) => ({
     });
   },
 
-  fetchDashboard: async () => {
-    const { authToken } = get();
+  fetchDashboard: async (period?: TimePeriod) => {
+    const { authToken, selectedPeriod } = get();
     if (!authToken) {
       set({ error: 'Not authenticated' });
       return;
     }
 
+    const periodToUse = period || selectedPeriod;
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch(`${getApiUrl()}/api/analytics/dashboard`, {
+      const response = await fetch(`${getApiUrl()}/api/analytics/dashboard?period=${periodToUse}`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },

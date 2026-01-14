@@ -24,6 +24,9 @@ import {
 } from '../validation/schemas.js';
 import { AnalyticsManager } from '../analytics/index.js';
 
+// Required client version - clients must match this exactly
+const REQUIRED_VERSION = '1.31';
+
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
 
@@ -46,14 +49,23 @@ export function setupSocketHandlers(io: GameServer): void {
     socket.data.position = null;
 
     // Track analytics session
-    const auth = socket.handshake.auth as { clientId?: string; deviceType?: string } | undefined;
+    const auth = socket.handshake.auth as { clientId?: string; deviceType?: string; version?: string } | undefined;
     const clientId = auth?.clientId || `anon_${socket.id}`;
     const deviceType = (auth?.deviceType === 'mobile' ? 'mobile' : 'desktop') as 'mobile' | 'desktop';
+    const clientVersion = auth?.version || 'unknown';
     const ip = socket.handshake.headers['x-forwarded-for']?.toString().split(',')[0]
       || socket.handshake.address
       || '';
 
-    AnalyticsManager.getInstance().startSession(socket.id, clientId, deviceType, ip);
+    // Check version - if mismatch, notify client and disconnect
+    if (clientVersion !== REQUIRED_VERSION && clientVersion !== 'unknown') {
+      console.log(`[Socket] Version mismatch: client ${clientVersion}, required ${REQUIRED_VERSION}`);
+      socket.emit('version-mismatch', { clientVersion, requiredVersion: REQUIRED_VERSION });
+      setTimeout(() => socket.disconnect(true), 1000); // Give time for message to be sent
+      return;
+    }
+
+    AnalyticsManager.getInstance().startSession(socket.id, clientId, deviceType, ip, clientVersion);
 
     // Send connection confirmation
     socket.emit('connected', { playerId: socket.data.playerId });
@@ -173,6 +185,10 @@ function handleJoinLobby(
   }
 
   socket.data.playerName = validation.data.playerName;
+
+  // Track player name for analytics
+  AnalyticsManager.getInstance().updateSessionPlayerName(socket.id, validation.data.playerName);
+
   socket.emit('lobby-state', { rooms: lobbyManager.getRoomList() });
 }
 

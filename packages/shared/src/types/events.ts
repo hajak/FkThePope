@@ -153,6 +153,9 @@ export type ServerToClientEvents = {
   'player-disconnected': (data: { position: PlayerPosition; playerName: string; disconnectedAt: number }) => void;
   'player-reconnected': (data: { position: PlayerPosition; playerName: string }) => void;
   'player-replaced': (data: { position: PlayerPosition }) => void;
+
+  // Version control
+  'version-mismatch': (data: { clientVersion: string; requiredVersion: string }) => void;
 };
 
 /**

@@ -1,10 +1,5 @@
-import { randomBytes } from 'crypto';
+import { randomBytes, createHash } from 'crypto';
 import type { PlayerPosition } from '@fkthepope/shared';
-
-// Generate short random ID
-function generateId(): string {
-  return randomBytes(4).toString('hex');
-}
 import { AnalyticsStorage } from './analytics-storage.js';
 import type {
   SessionData,
@@ -12,7 +7,20 @@ import type {
   DailyStats,
   PersistedAnalytics,
   DashboardResponse,
+  PlayerData,
+  TimePeriod,
 } from './types.js';
+
+// Generate short random ID
+function generateId(): string {
+  return randomBytes(4).toString('hex');
+}
+
+// Generate player ID from IP + name
+function generatePlayerId(ip: string, playerName: string): string {
+  const normalized = `${ip.toLowerCase()}:${playerName.toLowerCase().trim()}`;
+  return createHash('sha256').update(normalized).digest('hex').substring(0, 16);
+}
 
 // Will be dynamically imported to handle ESM/CJS issues
 let geoipLookup: ((ip: string) => { country?: string } | null) | null = null;
@@ -38,6 +46,19 @@ function getHour(timestamp: number = Date.now()): number {
   return new Date(timestamp).getUTCHours();
 }
 
+function getPeriodCutoff(period: TimePeriod): number {
+  const now = Date.now();
+  switch (period) {
+    case '7d':
+      return now - 7 * 24 * 60 * 60 * 1000;
+    case '30d':
+      return now - 30 * 24 * 60 * 60 * 1000;
+    case 'all':
+    default:
+      return 0;
+  }
+}
+
 export class AnalyticsManager {
   private static instance: AnalyticsManager;
 
@@ -45,6 +66,7 @@ export class AnalyticsManager {
   private activeSessions: Map<string, SessionData> = new Map();
   private activeGameCount: number = 0;
   private gameStartTimes: Map<string, number> = new Map();
+  private sessionIpMap: Map<string, string> = new Map(); // sessionId -> IP
 
   // Persisted data
   private totalGamesPlayed: number = 0;
@@ -52,12 +74,15 @@ export class AnalyticsManager {
   private dailyStats: Map<string, DailyStats> = new Map();
   private completedSessions: Array<{
     clientId: string;
+    playerName: string | null;
     startTime: number;
     endTime: number;
     deviceType: 'mobile' | 'desktop';
     country: string | null;
     gamesPlayed: number;
+    version: string;
   }> = [];
+  private players: Map<string, PlayerData> = new Map();
   private recentEvents: GameEvent[] = [];
 
   private constructor() {
@@ -94,6 +119,13 @@ export class AnalyticsManager {
     this.completedSessions = data.completedSessions.slice(-1000); // Keep last 1000
     this.recentEvents = data.recentEvents.slice(-1000);
 
+    // Load players
+    if (data.players) {
+      for (const player of data.players) {
+        this.players.set(player.playerId, player);
+      }
+    }
+
     // Load daily stats
     for (const day of data.dailyStats) {
       this.dailyStats.set(day.date, {
@@ -120,7 +152,12 @@ export class AnalyticsManager {
         ...day,
         uniqueUsers: Array.from(day.uniqueUsers as Set<string>),
       })),
-      completedSessions: this.completedSessions.slice(-1000),
+      completedSessions: this.completedSessions.slice(-1000).map(s => ({
+        ...s,
+        playerName: s.playerName ?? null,
+        version: s.version ?? 'unknown',
+      })),
+      players: Array.from(this.players.values()),
       recentEvents: this.recentEvents.slice(-1000),
       lastSaved: Date.now(),
     };
@@ -168,21 +205,25 @@ export class AnalyticsManager {
     sessionId: string,
     clientId: string,
     deviceType: 'mobile' | 'desktop',
-    ip: string
+    ip: string,
+    version: string = 'unknown'
   ): void {
     const country = this.resolveCountry(ip);
     const session: SessionData = {
       sessionId,
       clientId,
+      playerName: null,
       startTime: Date.now(),
       endTime: null,
       deviceType,
       country,
       gamesPlayed: 0,
       roomsJoined: [],
+      version,
     };
 
     this.activeSessions.set(sessionId, session);
+    this.sessionIpMap.set(sessionId, ip);
 
     // Track unique users
     this.allTimeUniqueUsers.add(clientId);
@@ -195,7 +236,40 @@ export class AnalyticsManager {
       today.countryBreakdown[country] = (today.countryBreakdown[country] || 0) + 1;
     }
 
-    console.log(`[Analytics] Session started: ${sessionId} (${deviceType}, ${country || 'unknown'})`);
+    console.log(`[Analytics] Session started: ${sessionId} (${deviceType}, ${country || 'unknown'}, v${version})`);
+  }
+
+  // Update player name when they join lobby
+  updateSessionPlayerName(sessionId: string, playerName: string): void {
+    const session = this.activeSessions.get(sessionId);
+    if (session) {
+      session.playerName = playerName;
+
+      // Update or create player record
+      const ip = this.sessionIpMap.get(sessionId) || '';
+      const playerId = generatePlayerId(ip, playerName);
+
+      let player = this.players.get(playerId);
+      if (!player) {
+        player = {
+          playerId,
+          playerName,
+          firstSeen: Date.now(),
+          lastSeen: Date.now(),
+          totalSessions: 0,
+          totalGamesPlayed: 0,
+          totalPlayTime: 0,
+          lastCountry: session.country,
+          lastDeviceType: session.deviceType,
+        };
+        this.players.set(playerId, player);
+      }
+
+      player.lastSeen = Date.now();
+      player.playerName = playerName; // Update in case casing changed
+      player.lastCountry = session.country;
+      player.lastDeviceType = session.deviceType;
+    }
   }
 
   endSession(sessionId: string): void {
@@ -209,14 +283,29 @@ export class AnalyticsManager {
     const today = this.getOrCreateDailyStats();
     today.totalSessionTime += duration;
 
+    // Update player record if we have a player name
+    if (session.playerName) {
+      const ip = this.sessionIpMap.get(sessionId) || '';
+      const playerId = generatePlayerId(ip, session.playerName);
+      const player = this.players.get(playerId);
+      if (player) {
+        player.totalSessions++;
+        player.totalPlayTime += duration;
+        player.totalGamesPlayed += session.gamesPlayed;
+        player.lastSeen = Date.now();
+      }
+    }
+
     // Store completed session
     this.completedSessions.push({
       clientId: session.clientId,
+      playerName: session.playerName,
       startTime: session.startTime,
       endTime: session.endTime,
       deviceType: session.deviceType,
       country: session.country,
       gamesPlayed: session.gamesPlayed,
+      version: session.version,
     });
 
     // Keep only last 1000 sessions
@@ -225,7 +314,8 @@ export class AnalyticsManager {
     }
 
     this.activeSessions.delete(sessionId);
-    console.log(`[Analytics] Session ended: ${sessionId} (${duration}s, ${session.gamesPlayed} games)`);
+    this.sessionIpMap.delete(sessionId);
+    console.log(`[Analytics] Session ended: ${sessionId} (${duration}s, ${session.gamesPlayed} games, player: ${session.playerName || 'unknown'})`);
   }
 
   // Game tracking
@@ -311,10 +401,11 @@ export class AnalyticsManager {
   }
 
   // Dashboard data
-  getDashboardData(): DashboardResponse {
+  getDashboardData(period: TimePeriod = '7d'): DashboardResponse {
     const now = Date.now();
     const oneDayAgo = now - 24 * 60 * 60 * 1000;
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const periodCutoff = getPeriodCutoff(period);
 
     // Calculate games in last 24h and 7 days
     let gamesLast24Hours = 0;
@@ -350,6 +441,18 @@ export class AnalyticsManager {
       }
     }
 
+    // Aggregate version breakdown from completed sessions
+    const versionBreakdown: Record<string, number> = {};
+    for (const session of this.completedSessions) {
+      const version = session.version || 'unknown';
+      versionBreakdown[version] = (versionBreakdown[version] || 0) + 1;
+    }
+    // Add active sessions to version breakdown
+    for (const session of this.activeSessions.values()) {
+      const version = session.version || 'unknown';
+      versionBreakdown[version] = (versionBreakdown[version] || 0) + 1;
+    }
+
     // Aggregate peak hours
     const peakHours: Record<number, number> = {};
     for (const stats of this.dailyStats.values()) {
@@ -359,18 +462,29 @@ export class AnalyticsManager {
       }
     }
 
-    // Calculate average session duration
-    let totalDuration = 0;
-    let sessionCount = 0;
+    // Calculate period-based stats
+    let periodTotalDuration = 0;
+    let periodSessionCount = 0;
+    let periodGamesPlayed = 0;
+    const periodUniqueUsers = new Set<string>();
+
     for (const session of this.completedSessions) {
-      totalDuration += session.endTime - session.startTime;
-      sessionCount++;
+      if (session.endTime >= periodCutoff) {
+        periodTotalDuration += session.endTime - session.startTime;
+        periodSessionCount++;
+        periodGamesPlayed += session.gamesPlayed;
+        periodUniqueUsers.add(session.clientId);
+      }
     }
-    const averageSessionDuration = sessionCount > 0 ? Math.floor(totalDuration / sessionCount / 1000) : 0;
+
+    const periodAvgSessionDuration = periodSessionCount > 0
+      ? Math.floor(periodTotalDuration / periodSessionCount / 1000)
+      : 0;
 
     // Recent sessions (last 20)
     const recentSessions: Array<{
       clientId: string;
+      playerName: string | null;
       startTime: number;
       endTime: number | null;
       deviceType: 'mobile' | 'desktop';
@@ -380,7 +494,8 @@ export class AnalyticsManager {
       .slice(-20)
       .reverse()
       .map((s) => ({
-        clientId: s.clientId.slice(0, 12) + '...', // Truncate for privacy
+        clientId: s.clientId.slice(0, 12) + '...',
+        playerName: s.playerName,
         startTime: s.startTime,
         endTime: s.endTime as number | null,
         deviceType: s.deviceType,
@@ -392,6 +507,7 @@ export class AnalyticsManager {
     for (const session of this.activeSessions.values()) {
       recentSessions.unshift({
         clientId: session.clientId.slice(0, 12) + '...',
+        playerName: session.playerName,
         startTime: session.startTime,
         endTime: null,
         deviceType: session.deviceType,
@@ -400,19 +516,32 @@ export class AnalyticsManager {
       });
     }
 
+    // Get player stats sorted by last seen (most recent first)
+    const playerStats = Array.from(this.players.values())
+      .sort((a, b) => b.lastSeen - a.lastSeen)
+      .slice(0, 100); // Top 100 players
+
     return {
       activeGames: this.activeGameCount,
       activeSessions: this.activeSessions.size,
       totalGamesPlayed: this.totalGamesPlayed,
       totalUniqueUsers: this.allTimeUniqueUsers.size,
-      averageSessionDuration,
+      periodStats: {
+        period,
+        gamesPlayed: periodGamesPlayed,
+        uniqueUsers: periodUniqueUsers.size,
+        averageSessionDuration: periodAvgSessionDuration,
+        totalPlayTime: Math.floor(periodTotalDuration / 1000),
+      },
       gamesLast24Hours,
       gamesLast7Days,
       gamesPerDay,
       deviceBreakdown,
       countryBreakdown,
+      versionBreakdown,
       peakHours,
       recentSessions: recentSessions.slice(0, 20),
+      players: playerStats,
     };
   }
 

@@ -15,6 +15,7 @@ function getDefaultData(): PersistedAnalytics {
     allTimeUniqueUsers: [],
     dailyStats: [],
     completedSessions: [],
+    players: [],
     recentEvents: [],
     lastSaved: Date.now(),
   };
