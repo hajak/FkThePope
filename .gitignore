@@ -34,3 +34,7 @@ pnpm-debug.log*
 
 # Misc
 *.local
+
+# Analytics data
+apps/server/data/analytics.json
+apps/server/data/analytics.tmp.json

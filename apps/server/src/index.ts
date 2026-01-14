@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import type { ClientToServerEvents, ServerToClientEvents, SocketData } from '@fkthepope/shared';
 import { setupSocketHandlers } from './socket/socket-handlers.js';
+import { AnalyticsManager, createAnalyticsRouter } from './analytics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -27,10 +28,16 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData
   pingInterval: 10000,   // How often to send ping
 });
 
+// Parse JSON bodies for API routes
+app.use(express.json());
+
 // Health check endpoint
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Analytics API routes
+app.use('/api/analytics', createAnalyticsRouter());
 
 // Serve static files in production
 if (isProduction) {
@@ -47,10 +54,25 @@ if (isProduction) {
   });
 }
 
-// Setup socket handlers
-setupSocketHandlers(io);
+// Initialize analytics and start server
+async function start() {
+  // Initialize analytics
+  await AnalyticsManager.getInstance().initialize();
 
-httpServer.listen(PORT, () => {
-  console.log(`Online Whist server running on port ${PORT}`);
-  console.log(`Environment: ${isProduction ? 'production' : 'development'}`);
-});
+  // Setup socket handlers
+  setupSocketHandlers(io);
+
+  httpServer.listen(PORT, () => {
+    console.log(`Online Whist server running on port ${PORT}`);
+    console.log(`Environment: ${isProduction ? 'production' : 'development'}`);
+  });
+
+  // Graceful shutdown
+  process.on('SIGTERM', async () => {
+    console.log('SIGTERM received, saving analytics...');
+    await AnalyticsManager.getInstance().forceSave();
+    process.exit(0);
+  });
+}
+
+start().catch(console.error);

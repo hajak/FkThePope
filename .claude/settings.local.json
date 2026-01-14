@@ -41,7 +41,8 @@
       "WebFetch(domain:fkthepope-production.up.railway.app)",
       "WebFetch(domain:whistgame.up.railway.app)",
       "WebFetch(domain:whist-online.up.railway.app)",
-      "WebFetch(domain:railway.com)"
+      "WebFetch(domain:railway.com)",
+      "Bash(pnpm list:*)"
     ]
   }
 }

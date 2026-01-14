@@ -22,6 +22,7 @@ import {
   ApprovePlayerSchema,
   RejectPlayerSchema,
 } from '../validation/schemas.js';
+import { AnalyticsManager } from '../analytics/index.js';
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
@@ -44,12 +45,24 @@ export function setupSocketHandlers(io: GameServer): void {
     socket.data.roomId = null;
     socket.data.position = null;
 
+    // Track analytics session
+    const auth = socket.handshake.auth as { clientId?: string; deviceType?: string } | undefined;
+    const clientId = auth?.clientId || `anon_${socket.id}`;
+    const deviceType = (auth?.deviceType === 'mobile' ? 'mobile' : 'desktop') as 'mobile' | 'desktop';
+    const ip = socket.handshake.headers['x-forwarded-for']?.toString().split(',')[0]
+      || socket.handshake.address
+      || '';
+
+    AnalyticsManager.getInstance().startSession(socket.id, clientId, deviceType, ip);
+
     // Send connection confirmation
     socket.emit('connected', { playerId: socket.data.playerId });
 
     // Handle disconnection
     socket.on('disconnect', () => {
       console.log(`Client disconnected: ${socket.id}`);
+      // End analytics session
+      AnalyticsManager.getInstance().endSession(socket.id);
       // Remove from any pending lists
       lobbyManager.removePendingPlayer(socket.id);
       handleDisconnect(socket, io);
@@ -378,6 +391,10 @@ function handleLeaveRoom(socket: GameSocket, io: GameServer): void {
       });
     } else {
       // Only clean up game if room is deleted (no human players left)
+      // Track game end if there was an active game
+      if (activeGames.has(result.roomId)) {
+        AnalyticsManager.getInstance().recordGameEnded(result.roomId);
+      }
       activeGames.delete(result.roomId);
     }
   }
@@ -421,6 +438,17 @@ function handleStartGame(socket: GameSocket, io: GameServer): void {
   // Create game manager
   const gameManager = new GameManager(room);
   activeGames.set(roomId, gameManager);
+
+  // Track game started
+  AnalyticsManager.getInstance().recordGameStarted(roomId, room.players.size);
+
+  // Track players in the game
+  for (const [_pos, player] of room.players) {
+    if (!player.isBot) {
+      AnalyticsManager.getInstance().recordPlayerJoinedRoom(player.socketId, roomId);
+      AnalyticsManager.getInstance().recordPlayerPlayedGame(player.socketId);
+    }
+  }
 
   // Start first hand
   const { trumpSuit, hands } = gameManager.startHand();

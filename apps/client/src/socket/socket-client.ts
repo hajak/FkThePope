@@ -13,6 +13,25 @@ let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 10;
 const RECONNECT_DELAY_BASE = 1000;
 
+// Generate or retrieve a persistent client ID for analytics
+function getClientId(): string {
+  let clientId = localStorage.getItem('whist_client_id');
+  if (!clientId) {
+    clientId = `client_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    localStorage.setItem('whist_client_id', clientId);
+  }
+  return clientId;
+}
+
+// Detect device type from user agent and screen size
+function getDeviceType(): 'mobile' | 'desktop' {
+  const userAgent = navigator.userAgent.toLowerCase();
+  const mobileKeywords = ['android', 'iphone', 'ipad', 'ipod', 'mobile', 'tablet', 'webos', 'blackberry'];
+  const isMobileUA = mobileKeywords.some(kw => userAgent.includes(kw));
+  const isMobileScreen = window.innerWidth <= 1024 && 'ontouchstart' in window;
+  return (isMobileUA || isMobileScreen) ? 'mobile' : 'desktop';
+}
+
 // Callbacks for connection state changes
 type ConnectionCallback = (connected: boolean, reconnecting?: boolean) => void;
 const connectionCallbacks: Set<ConnectionCallback> = new Set();
@@ -36,6 +55,10 @@ export function getSocket(): GameSocket {
       reconnectionDelay: RECONNECT_DELAY_BASE,
       reconnectionDelayMax: 5000,
       timeout: 10000,
+      auth: {
+        clientId: getClientId(),
+        deviceType: getDeviceType(),
+      },
     });
 
     // Handle reconnection events

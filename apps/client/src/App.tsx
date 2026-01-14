@@ -3,6 +3,7 @@ import { useSocket } from './socket/use-socket';
 import { useGameStore } from './stores/game-store';
 import { LobbyPage } from './pages/LobbyPage';
 import { GamePage } from './pages/GamePage';
+import { DashboardPage } from './pages/DashboardPage';
 import { Toast } from './components/ui/Toast';
 import { ConnectionStatus } from './components/ui/ConnectionStatus';
 
@@ -28,6 +29,7 @@ export function App() {
             gameState ? <GamePage /> : <Navigate to="/" replace />
           }
         />
+        <Route path="/dashboard" element={<DashboardPage />} />
       </Routes>
       <Toast />
     </div>
