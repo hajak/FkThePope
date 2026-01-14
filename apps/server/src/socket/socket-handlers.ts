@@ -57,11 +57,16 @@ export function setupSocketHandlers(io: GameServer): void {
       || socket.handshake.address
       || '';
 
-    // Check version - if mismatch, notify client and disconnect
-    if (clientVersion !== REQUIRED_VERSION && clientVersion !== 'unknown') {
+    // Check version - if mismatch or unknown (old client), notify and disconnect
+    if (clientVersion !== REQUIRED_VERSION) {
       console.log(`[Socket] Version mismatch: client ${clientVersion}, required ${REQUIRED_VERSION}`);
+      // Emit both events - new clients handle version-mismatch, old clients see error
       socket.emit('version-mismatch', { clientVersion, requiredVersion: REQUIRED_VERSION });
-      setTimeout(() => socket.disconnect(true), 1000); // Give time for message to be sent
+      socket.emit('error', {
+        message: `Your game is outdated (v${clientVersion}). Please refresh the page (Ctrl+Shift+R or Cmd+Shift+R) to get the latest version (v${REQUIRED_VERSION}).`,
+        code: 'VERSION_MISMATCH'
+      });
+      setTimeout(() => socket.disconnect(true), 2000); // Give time for messages to be shown
       return;
     }
 
