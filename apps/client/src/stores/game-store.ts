@@ -83,47 +83,65 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newHand = state.currentHand;
     const newTrick = newHand?.currentTrick;
 
-    // Only merge if we're on the SAME hand and trick number
-    // Don't merge cards from a previous hand/trick into a new one
+    // Handle race condition where card-played arrives before game-state
+    // We need to preserve locally added cards that the server doesn't know about yet
     const sameHand = existingHand?.number === newHand?.number;
-    const sameTrick = existingTrick?.trickNumber === newTrick?.trickNumber ||
-      // If new trick has no trickNumber yet, check if it's the first trick of same hand
-      (!newTrick?.trickNumber && sameHand && existingTrick?.trickNumber === 1);
 
-    // If we have existing trick cards that aren't in the new state, preserve them
-    // BUT only if we're on the same hand and trick
-    if (existingTrick?.cards?.length && newHand && sameHand && sameTrick) {
-      const existingCards = existingTrick.cards;
-      const newCards = newTrick?.cards ?? [];
+    if (existingTrick?.cards?.length && newHand && sameHand) {
+      const existingTrickNum = existingTrick.trickNumber ?? 0;
+      const newTrickNum = newTrick?.trickNumber ?? 0;
+      const expectedTrickNum = (newHand.completedTricks?.length ?? 0) + 1;
 
-      // Merge: add any cards from existing trick that aren't in new trick
-      const mergedCards = [...newCards];
-      for (const existingCard of existingCards) {
-        if (!mergedCards.some(c => c.playedBy === existingCard.playedBy)) {
-          mergedCards.push(existingCard);
-        }
-      }
-
-      // Only merge if we have more cards locally
-      if (mergedCards.length > newCards.length && mergedCards[0]) {
-        const firstCard = mergedCards[0];
+      // Case 1: Local trick is AHEAD of server (we have cards for new trick, server is behind)
+      // This happens when card-played arrives before game-state updates
+      if (existingTrickNum === expectedTrickNum && existingTrickNum > newTrickNum) {
+        // Keep our local trick entirely - server will catch up
         set({
           gameState: {
             ...state,
             currentHand: {
               ...newHand,
-              currentTrick: {
-                cards: mergedCards,
-                leadSuit: newTrick?.leadSuit ?? firstCard.card.suit,
-                leader: newTrick?.leader ?? firstCard.playedBy,
-                currentPlayer: newTrick?.currentPlayer ?? mergedCards[mergedCards.length - 1]?.playedBy ?? firstCard.playedBy,
-                trickNumber: newTrick?.trickNumber ?? (newHand.completedTricks?.length ?? 0) + 1,
-                winner: newTrick?.winner,
-              },
+              currentTrick: existingTrick,
             },
           },
         });
         return;
+      }
+
+      // Case 2: Same trick number - merge cards
+      if (existingTrickNum === newTrickNum || (!newTrickNum && existingTrickNum === 1)) {
+        const existingCards = existingTrick.cards;
+        const newCards = newTrick?.cards ?? [];
+
+        // Merge: add any cards from existing trick that aren't in new trick
+        const mergedCards = [...newCards];
+        for (const existingCard of existingCards) {
+          if (!mergedCards.some(c => c.playedBy === existingCard.playedBy)) {
+            mergedCards.push(existingCard);
+          }
+        }
+
+        // Only merge if we have more cards locally
+        if (mergedCards.length > newCards.length && mergedCards[0]) {
+          const firstCard = mergedCards[0];
+          set({
+            gameState: {
+              ...state,
+              currentHand: {
+                ...newHand,
+                currentTrick: {
+                  cards: mergedCards,
+                  leadSuit: newTrick?.leadSuit ?? firstCard.card.suit,
+                  leader: newTrick?.leader ?? firstCard.playedBy,
+                  currentPlayer: newTrick?.currentPlayer ?? mergedCards[mergedCards.length - 1]?.playedBy ?? firstCard.playedBy,
+                  trickNumber: newTrick?.trickNumber ?? expectedTrickNum,
+                  winner: newTrick?.winner,
+                },
+              },
+            },
+          });
+          return;
+        }
       }
     }
 

@@ -90,6 +90,8 @@ export function useSocket() {
       setPendingJoin(null);
       clearChatMessages();
       clearSession();
+      // Stop video when leaving room
+      useVideoStore.getState().stopVideo();
     });
 
     // Chat events
@@ -136,6 +138,10 @@ export function useSocket() {
         setGameStatePreservingTrick(gameState);
       } else {
         setGameState(gameState);
+      }
+      // Stop video when game ends
+      if (gameState.phase === 'game_end') {
+        useVideoStore.getState().stopVideo();
       }
     });
 
