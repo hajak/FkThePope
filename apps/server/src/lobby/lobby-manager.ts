@@ -1,5 +1,5 @@
 import type { PlayerPosition, RoomInfo, PendingPlayer } from '@fkthepope/shared';
-import { PLAYER_POSITIONS, BOT_NAMES } from '@fkthepope/shared';
+import { PLAYER_POSITIONS, getRandomBotName } from '@fkthepope/shared';
 import { nanoid, playerId } from '@fkthepope/game-engine';
 
 /**
@@ -298,7 +298,7 @@ export class LobbyManager {
     const botPlayer: RoomPlayer = {
       id: playerId(),
       socketId: `bot_${position}`,
-      name: BOT_NAMES[position],
+      name: getRandomBotName(),
       position,
       isBot: true,
       isReady: true,
@@ -346,7 +346,7 @@ export class LobbyManager {
     const botPlayer: RoomPlayer = {
       id: playerId(),
       socketId: `bot_${botPosition}`,
-      name: BOT_NAMES[botPosition],
+      name: getRandomBotName(),
       position: botPosition,
       isBot: true,
       isReady: true,

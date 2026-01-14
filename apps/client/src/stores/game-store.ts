@@ -167,19 +167,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (!state.gameState?.currentHand) return state;
 
       const newCard: PlayedCard = { card, playedBy: player, faceDown, playedAt: Date.now() };
+      const completedTricksCount = state.gameState.currentHand.completedTricks?.length ?? 0;
+      const expectedTrickNumber = completedTricksCount + 1;
 
-      // Get current trick or initialize an empty one (handles race condition)
-      const currentTrick = state.gameState.currentHand.currentTrick ?? {
-        cards: [],
-        leadSuit: card.suit, // First card sets the lead suit
-        leader: player, // First player to play leads
-        currentPlayer: player,
-        trickNumber: (state.gameState.currentHand.completedTricks?.length ?? 0) + 1,
-      };
+      // Get current trick, but check if it's stale (from a previous completed trick)
+      let currentTrick = state.gameState.currentHand.currentTrick;
+
+      // If current trick is null OR stale (trickNumber doesn't match expected), start fresh
+      if (!currentTrick || currentTrick.trickNumber !== expectedTrickNumber) {
+        currentTrick = {
+          cards: [],
+          leadSuit: card.suit, // First card sets the lead suit
+          leader: player, // First player to play leads
+          currentPlayer: player,
+          trickNumber: expectedTrickNumber,
+        };
+      }
 
       const currentCards = currentTrick.cards;
 
-      // Don't add if already present
+      // Don't add if already present in THIS trick
       if (currentCards.some((c) => c.playedBy === player)) return state;
 
       const updatedTrick = {

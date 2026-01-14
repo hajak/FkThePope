@@ -21,14 +21,24 @@ export const POSITION_NAMES: Record<PlayerPosition, string> = {
 };
 
 /**
- * Default bot names by position
+ * Old lady names for bots
  */
-export const BOT_NAMES: Record<PlayerPosition, string> = {
-  north: 'Bot North',
-  east: 'Bot East',
-  south: 'Bot South',
-  west: 'Bot West',
-};
+export const OLD_LADY_NAMES = [
+  'Ethel', 'Mildred', 'Gertrude', 'Edna', 'Beatrice',
+  'Agnes', 'Blanche', 'Gladys', 'Edith', 'Harriet',
+  'Myrtle', 'Bertha', 'Doris', 'Hazel', 'Irene',
+  'Opal', 'Pearl', 'Viola', 'Eunice', 'Erma',
+  'Lucille', 'Esther', 'Wilma', 'Loretta', 'Norma',
+  'Dolores', 'Phyllis', 'Vivian', 'Thelma', 'Wanda',
+] as const;
+
+/**
+ * Get a random bot name from the old lady names
+ */
+export function getRandomBotName(): string {
+  const index = Math.floor(Math.random() * OLD_LADY_NAMES.length);
+  return OLD_LADY_NAMES[index] ?? 'Ethel';
+}
 
 /**
  * Time limits in milliseconds
