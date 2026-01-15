@@ -1234,3 +1234,34 @@
     padding: 4px 8px;
   }
 }
+
+/* Debug Panel - only visible with ?debug=true */
+.debug-panel {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #0f0;
+  font-family: monospace;
+  font-size: 11px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #0f0;
+  z-index: 9999;
+  max-width: 300px;
+  line-height: 1.4;
+}
+
+.debug-panel b {
+  color: #ff0;
+}
+
+@media (max-width: 767px) {
+  .debug-panel {
+    font-size: 9px;
+    padding: 6px 8px;
+    max-width: 200px;
+    bottom: 5px;
+    left: 5px;
+  }
+}

@@ -9,12 +9,17 @@ import { APP_VERSION } from '../socket/socket-client';
 import type { Card, PlayerPosition } from '@fkthepope/shared';
 import './GamePage.css';
 
+// Check for debug mode via URL parameter
+const isDebugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
+
 export function GamePage() {
   const gameState = useGameStore((s) => s.gameState);
   const myPosition = useGameStore((s) => s.myPosition);
   const selectedCard = useGameStore((s) => s.selectedCard);
   const setSelectedCard = useGameStore((s) => s.setSelectedCard);
   const waitingFor = useGameStore((s) => s.waitingFor);
+  const isPreservingTrick = useGameStore((s) => s.isPreservingTrick);
+  const preservedTrick = useGameStore((s) => s.preservedTrick);
 
   const myHand = useMyHand();
   const legalMoves = useLegalMoves();
@@ -22,6 +27,21 @@ export function GamePage() {
   const trumpSuit = useTrumpSuit();
   const currentTrick = useCurrentTrick();
   const scores = useScores();
+
+  // Debug info
+  const debugInfo = isDebugMode ? {
+    version: APP_VERSION,
+    handNum: gameState?.currentHand?.number ?? '-',
+    trickNum: currentTrick?.trickNumber ?? '-',
+    completedTricks: gameState?.currentHand?.completedTricks?.length ?? 0,
+    trickCards: currentTrick?.cards?.map(c => `${c.playedBy}:${c.card.rank}${c.card.suit[0]}`).join(', ') || 'none',
+    trickCardCount: currentTrick?.cards?.length ?? 0,
+    rawTrickCards: gameState?.currentHand?.currentTrick?.cards?.length ?? 0,
+    isPreserving: isPreservingTrick,
+    preservedCards: preservedTrick?.cards?.length ?? 0,
+    waitingFor: waitingFor ?? '-',
+    myTurn: isMyTurn,
+  } : null;
 
   const { playCard, leaveRoom, replaceWithBot } = useGameActions();
 
@@ -386,6 +406,17 @@ export function GamePage() {
               Back to Game
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Debug Panel */}
+      {debugInfo && (
+        <div className="debug-panel">
+          <div><b>v{debugInfo.version}</b> | Hand {debugInfo.handNum} | Trick {debugInfo.trickNum}</div>
+          <div>Completed: {debugInfo.completedTricks} | Cards: {debugInfo.trickCardCount} (raw: {debugInfo.rawTrickCards})</div>
+          <div>Preserving: {debugInfo.isPreserving ? 'YES' : 'no'} ({debugInfo.preservedCards})</div>
+          <div>Waiting: {debugInfo.waitingFor} | MyTurn: {debugInfo.myTurn ? 'YES' : 'no'}</div>
+          <div style={{fontSize: '10px', wordBreak: 'break-all'}}>{debugInfo.trickCards}</div>
         </div>
       )}
 
