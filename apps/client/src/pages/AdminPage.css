@@ -118,6 +118,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  pointer-events: none; /* Don't intercept clicks */
 }
 
 .connection-status.connected {
@@ -194,6 +195,8 @@
   padding: 16px 24px;
   background: rgba(15, 23, 42, 0.5);
   border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  position: relative;
+  z-index: 50;
 }
 
 .tab-btn {
@@ -207,6 +210,8 @@
   cursor: pointer;
   transition: all 0.2s;
   border: 1px solid transparent;
+  position: relative;
+  z-index: 10;
 }
 
 .tab-btn:hover {
