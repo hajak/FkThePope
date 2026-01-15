@@ -204,6 +204,7 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
 
     // Handle admin state updates
     socket.on('admin-state', (data: AdminDashboardState) => {
+      console.log('[Admin] Received admin-state:', data.rooms.length, 'rooms');
       set({
         rooms: data.rooms,
         totalConnections: data.totalConnections,
@@ -212,6 +213,7 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
     });
 
     socket.on('room-updated', (room: AdminGameInfo) => {
+      console.log('[Admin] Room updated:', room.roomId);
       set((state) => ({
         rooms: state.rooms.map((r) =>
           r.roomId === room.roomId ? room : r
@@ -220,12 +222,14 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
     });
 
     socket.on('room-created', (room: AdminGameInfo) => {
+      console.log('[Admin] Room created:', room.roomId, room.roomName);
       set((state) => ({
         rooms: [...state.rooms, room],
       }));
     });
 
     socket.on('room-deleted', ({ roomId }: { roomId: string }) => {
+      console.log('[Admin] Room deleted:', roomId);
       set((state) => ({
         rooms: state.rooms.filter((r) => r.roomId !== roomId),
         selectedRoomId: state.selectedRoomId === roomId ? null : state.selectedRoomId,

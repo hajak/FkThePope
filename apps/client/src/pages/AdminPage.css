@@ -252,6 +252,36 @@
   font-style: italic;
 }
 
+.connection-warning {
+  padding: 16px;
+  margin-bottom: 16px;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 8px;
+  color: #fbbf24;
+  text-align: center;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.retry-btn {
+  padding: 6px 16px;
+  background: rgba(251, 191, 36, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: 6px;
+  color: #fbbf24;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.retry-btn:hover {
+  background: rgba(251, 191, 36, 0.3);
+}
+
 .room-item {
   padding: 16px;
   margin-bottom: 12px;

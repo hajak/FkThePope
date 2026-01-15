@@ -226,27 +226,35 @@ export function AdminPage() {
           {/* Room list sidebar */}
           <aside className="room-list">
             <h2>Active Rooms ({rooms.length})</h2>
-            {rooms.length === 0 ? (
-              <div className="no-rooms">No active rooms</div>
-            ) : (
-              rooms.map((room) => (
-                <div
-                  key={room.roomId}
-                  className={`room-item ${selectedRoomId === room.roomId ? 'selected' : ''} ${room.status}`}
-                  onClick={() => selectRoom(room.roomId)}
-                >
-                  <div className="room-name">{room.roomName}</div>
-                  <div className="room-meta">
-                    <span className={`room-status ${room.status}`}>
-                      {room.status === 'playing' ? `Hand ${room.handNumber}` : 'Waiting'}
-                    </span>
-                    <span className="player-count">
-                      {Object.values(room.players).filter(Boolean).length}/4
-                    </span>
-                  </div>
-                </div>
-              ))
+            {!isConnected && (
+              <div className="connection-warning">
+                Connecting to server...
+                <button onClick={() => connect()} className="retry-btn">Retry</button>
+              </div>
             )}
+            {isConnected && rooms.length === 0 && (
+              <div className="no-rooms">No active rooms on server</div>
+            )}
+            {rooms.map((room) => (
+              <div
+                key={room.roomId}
+                className={`room-item ${selectedRoomId === room.roomId ? 'selected' : ''} ${room.status}`}
+                onClick={() => {
+                  console.log('[Admin] Clicking room:', room.roomId);
+                  selectRoom(room.roomId);
+                }}
+              >
+                <div className="room-name">{room.roomName}</div>
+                <div className="room-meta">
+                  <span className={`room-status ${room.status}`}>
+                    {room.status === 'playing' ? `Hand ${room.handNumber}` : 'Waiting'}
+                  </span>
+                  <span className="player-count">
+                    {Object.values(room.players).filter(Boolean).length}/4
+                  </span>
+                </div>
+              </div>
+            ))}
           </aside>
 
           {/* Main content area */}
