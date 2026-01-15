@@ -558,4 +558,109 @@ export class AnalyticsManager {
   close(): void {
     this.storage.close();
   }
+
+  // Error and event logging
+
+  /**
+   * Log an error for later debugging
+   */
+  logError(
+    source: string,
+    message: string,
+    options: {
+      level?: 'error' | 'warn' | 'info';
+      stack?: string;
+      context?: Record<string, unknown>;
+      sessionId?: string;
+      roomId?: string;
+      playerName?: string;
+    } = {}
+  ): void {
+    this.storage.logError({
+      level: options.level ?? 'error',
+      source,
+      message,
+      stack: options.stack,
+      context: options.context,
+      sessionId: options.sessionId,
+      roomId: options.roomId,
+      playerName: options.playerName,
+    });
+    console.error(`[${source}] ${message}`, options.context || '');
+  }
+
+  /**
+   * Log a session event for detailed tracking
+   */
+  logSessionEvent(
+    sessionId: string,
+    eventType: string,
+    options: {
+      roomId?: string;
+      playerPosition?: string;
+      details?: Record<string, unknown>;
+    } = {}
+  ): void {
+    this.storage.logSessionEvent({
+      sessionId,
+      eventType,
+      roomId: options.roomId,
+      playerPosition: options.playerPosition,
+      details: options.details,
+    });
+  }
+
+  /**
+   * Get recent error logs
+   */
+  getErrorLogs(limit: number = 100): Array<{
+    id: number;
+    timestamp: number;
+    level: string;
+    source: string;
+    message: string;
+    stack: string | null;
+    context: string | null;
+    sessionId: string | null;
+    roomId: string | null;
+    playerName: string | null;
+  }> {
+    return this.storage.getErrorLogs(limit);
+  }
+
+  /**
+   * Get session events for a specific session
+   */
+  getSessionEvents(sessionId: string, limit: number = 500): Array<{
+    id: number;
+    timestamp: number;
+    eventType: string;
+    roomId: string | null;
+    playerPosition: string | null;
+    details: string | null;
+  }> {
+    return this.storage.getSessionEvents(sessionId, limit);
+  }
+
+  /**
+   * Get recent session events (for live debugging)
+   */
+  getRecentSessionEvents(limit: number = 200): Array<{
+    id: number;
+    timestamp: number;
+    sessionId: string;
+    eventType: string;
+    roomId: string | null;
+    playerPosition: string | null;
+    details: string | null;
+  }> {
+    return this.storage.getRecentSessionEvents(limit);
+  }
+
+  /**
+   * Cleanup old logs
+   */
+  cleanupOldLogs(daysToKeep: number = 30): void {
+    this.storage.cleanupOldLogs(daysToKeep);
+  }
 }

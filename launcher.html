@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Whist Online - Launcher</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #f0f0f0;
+    }
+    .launcher {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 8px;
+      font-size: 28px;
+    }
+    .subtitle {
+      color: #888;
+      margin-bottom: 32px;
+    }
+    .links {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    a {
+      display: block;
+      padding: 16px 24px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+    .game-link {
+      background: linear-gradient(135deg, #4a9eff, #3a8eef);
+      color: white;
+    }
+    .game-link:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(74, 158, 255, 0.4);
+    }
+    .admin-link {
+      background: rgba(255, 165, 0, 0.2);
+      border: 1px solid rgba(255, 165, 0, 0.4);
+      color: #ffa500;
+    }
+    .admin-link:hover {
+      background: rgba(255, 165, 0, 0.3);
+    }
+    .dashboard-link {
+      background: rgba(50, 205, 50, 0.2);
+      border: 1px solid rgba(50, 205, 50, 0.4);
+      color: #32cd32;
+    }
+    .dashboard-link:hover {
+      background: rgba(50, 205, 50, 0.3);
+    }
+    .password-section {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    .password-label {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    .password {
+      font-family: monospace;
+      font-size: 16px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 8px 16px;
+      border-radius: 6px;
+      display: inline-block;
+      cursor: pointer;
+      user-select: all;
+    }
+    .password:hover {
+      background: rgba(0, 0, 0, 0.5);
+    }
+    .copy-hint {
+      font-size: 11px;
+      color: #666;
+      margin-top: 8px;
+    }
+    .env-toggle {
+      margin-bottom: 24px;
+    }
+    .env-toggle label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #888;
+    }
+    .env-toggle input {
+      width: 18px;
+      height: 18px;
+    }
+    .local-note {
+      font-size: 12px;
+      color: #666;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="launcher">
+    <h1>Whist Online</h1>
+    <p class="subtitle">Quick launcher</p>
+
+    <div class="env-toggle">
+      <label>
+        <input type="checkbox" id="env-toggle" onchange="updateLinks()">
+        Use localhost (dev mode)
+      </label>
+    </div>
+
+    <div class="links">
+      <a href="#" id="game-link" class="game-link" target="_blank">
+        Play Game
+      </a>
+      <a href="#" id="admin-link" class="admin-link" target="_blank">
+        Admin Dashboard (Live Monitor)
+      </a>
+      <a href="#" id="dashboard-link" class="dashboard-link" target="_blank">
+        Analytics Dashboard
+      </a>
+    </div>
+
+    <div class="password-section">
+      <div class="password-label">Password for Admin &amp; Analytics</div>
+      <div class="password" onclick="copyPassword()">whist-analytics-2024</div>
+      <div class="copy-hint">Click to select, then Cmd+C to copy</div>
+    </div>
+
+    <p class="local-note">
+      Open this file directly in your browser (File > Open)<br>
+      or bookmark it for easy access.
+    </p>
+  </div>
+
+  <script>
+    const PROD_URL = 'https://online-whist.up.railway.app';
+    const LOCAL_URL = 'http://localhost:5173';
+
+    function updateLinks() {
+      const useLocal = document.getElementById('env-toggle').checked;
+      const baseUrl = useLocal ? LOCAL_URL : PROD_URL;
+
+      document.getElementById('game-link').href = baseUrl;
+      document.getElementById('admin-link').href = baseUrl + '/admin';
+      document.getElementById('dashboard-link').href = baseUrl + '/dashboard';
+    }
+
+    function copyPassword() {
+      // The onclick with user-select: all should handle selection
+      // User just needs to Cmd+C after clicking
+    }
+
+    // Initialize with production URLs
+    updateLinks();
+  </script>
+</body>
+</html>

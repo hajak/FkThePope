@@ -32,7 +32,7 @@ import {
 } from '../admin/index.js';
 
 // Required client version - clients must match this exactly
-const REQUIRED_VERSION = '1.40';
+const REQUIRED_VERSION = '1.41';
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
@@ -83,12 +83,23 @@ export function setupSocketHandlers(io: GameServer): void {
     // Track client metadata for admin dashboard
     setClientMetadata(socket.id, { version: clientVersion, deviceType });
 
+    // Log session event for debugging
+    AnalyticsManager.getInstance().logSessionEvent(socket.id, 'connected', {
+      details: { deviceType, version: clientVersion, ip: ip.substring(0, 20) },
+    });
+
     // Send connection confirmation
     socket.emit('connected', { playerId: socket.data.playerId });
 
     // Handle disconnection
     socket.on('disconnect', () => {
       console.log(`Client disconnected: ${socket.id}`);
+      // Log session event for debugging
+      AnalyticsManager.getInstance().logSessionEvent(socket.id, 'disconnected', {
+        roomId: socket.data.roomId ?? undefined,
+        playerPosition: socket.data.position ?? undefined,
+        details: { playerName: socket.data.playerName },
+      });
       // End analytics session
       AnalyticsManager.getInstance().endSession(socket.id);
       // Remove client metadata
@@ -207,6 +218,11 @@ function handleJoinLobby(
   // Track player name for analytics
   AnalyticsManager.getInstance().updateSessionPlayerName(socket.id, validation.data.playerName);
 
+  // Log session event
+  AnalyticsManager.getInstance().logSessionEvent(socket.id, 'join_lobby', {
+    details: { playerName: validation.data.playerName },
+  });
+
   socket.emit('lobby-state', { rooms: lobbyManager.getRoomList() });
 }
 
@@ -240,6 +256,13 @@ function handleCreateRoom(
 
   // Broadcast updated room list
   io.emit('lobby-state', { rooms: lobbyManager.getRoomList() });
+
+  // Log session event
+  AnalyticsManager.getInstance().logSessionEvent(socket.id, 'create_room', {
+    roomId: room.id,
+    playerPosition: 'south',
+    details: { roomName: room.name, playerName: socket.data.playerName },
+  });
 
   // Notify admin dashboard
   notifyAdminOfRoomCreated(room.id);
@@ -483,13 +506,27 @@ function handleStartGame(socket: GameSocket, io: GameServer): void {
   // Track game started
   AnalyticsManager.getInstance().recordGameStarted(roomId, room.players.size);
 
-  // Track players in the game
-  for (const [_pos, player] of room.players) {
+  // Track players in the game and log session events
+  const playerList: Array<{ position: string; name: string; isBot: boolean }> = [];
+  for (const [pos, player] of room.players) {
+    playerList.push({ position: pos, name: player.name, isBot: player.isBot });
     if (!player.isBot) {
       AnalyticsManager.getInstance().recordPlayerJoinedRoom(player.socketId, roomId);
       AnalyticsManager.getInstance().recordPlayerPlayedGame(player.socketId);
+      // Log session event for each human player
+      AnalyticsManager.getInstance().logSessionEvent(player.socketId, 'game_started', {
+        roomId,
+        playerPosition: pos,
+        details: { playerName: player.name, roomName: room.name },
+      });
     }
   }
+
+  // Log the full player composition for debugging
+  AnalyticsManager.getInstance().logSessionEvent(socket.id, 'game_players', {
+    roomId,
+    details: { players: playerList },
+  });
 
   // Start first hand
   const { trumpSuit, hands } = gameManager.startHand();
@@ -557,6 +594,24 @@ function handlePlayCard(
   const result = gameManager.playCard(position, card, faceDown);
 
   if (!result.success) {
+    // Log the play rejection for debugging
+    AnalyticsManager.getInstance().logSessionEvent(socket.id, 'play_rejected', {
+      roomId,
+      playerPosition: position,
+      details: {
+        error: result.error,
+        attemptedCard: `${card.rank}${card.suit.charAt(0).toUpperCase()}`,
+        faceDown,
+      },
+    });
+    AnalyticsManager.getInstance().logError('play-card', result.error!, {
+      level: 'warn',
+      sessionId: socket.id,
+      roomId,
+      playerName: socket.data.playerName,
+      context: { position, card, faceDown },
+    });
+
     socket.emit('play-rejected', {
       violation: {
         ruleId: 'base',
@@ -575,11 +630,33 @@ function handlePlayCard(
     faceDown,
   });
 
+  // Log session event for the card play
+  AnalyticsManager.getInstance().logSessionEvent(socket.id, 'card_played', {
+    roomId,
+    playerPosition: position,
+    details: {
+      card: `${card.rank}${card.suit.charAt(0).toUpperCase()}`,
+      faceDown,
+      handNumber: gameManager.getServerState().currentHand?.number,
+      trickNumber: gameManager.getServerState().currentHand?.tricksPlayed,
+    },
+  });
+
   // Notify admin dashboard of state change
   notifyAdminOfRoomUpdate(roomId);
 
   // Handle trick completion
   if (result.trickComplete) {
+    // Log trick complete event
+    AnalyticsManager.getInstance().logSessionEvent(socket.id, 'trick_complete', {
+      roomId,
+      details: {
+        winner: result.trickWinner,
+        trickNumber: gameManager.getServerState().currentHand?.tricksPlayed,
+        handNumber: gameManager.getServerState().currentHand?.number,
+      },
+    });
+
     io.to(roomId).emit('trick-complete', {
       winner: result.trickWinner!,
       trickNumber: gameManager.getServerState().currentHand?.tricksPlayed ?? 0,
@@ -594,6 +671,18 @@ function handlePlayCard(
         south: serverState.players.south?.tricksWon ?? 0,
         west: serverState.players.west?.tricksWon ?? 0,
       };
+
+      // Log hand complete event
+      AnalyticsManager.getInstance().logSessionEvent(socket.id, 'hand_complete', {
+        roomId,
+        details: {
+          winner: result.handWinner,
+          handNumber: serverState.currentHand?.number,
+          tricks,
+          scores: serverState.scores,
+        },
+      });
+
       io.to(roomId).emit('hand-complete', {
         winner: result.handWinner!,
         tricks,
@@ -790,6 +879,13 @@ function handleApprovePlayer(
     approvedSocket.join(roomId);
     approvedSocket.data.roomId = roomId;
     approvedSocket.data.position = availablePosition;
+
+    // Log session event for the joined player
+    AnalyticsManager.getInstance().logSessionEvent(socketId, 'join_room', {
+      roomId,
+      playerPosition: availablePosition,
+      details: { playerName: approvedSocket.data.playerName, roomName: room.name },
+    });
 
     // Tell them they've been approved
     approvedSocket.emit('join-approved', { position: availablePosition });

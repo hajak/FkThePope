@@ -1,7 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAdminStore, type AdminGameInfo } from '../stores/admin-store';
 import type { PlayerPosition, Card } from '@fkthepope/shared';
 import './AdminPage.css';
+
+// Types for error and event logs
+interface ErrorLog {
+  id: number;
+  timestamp: number;
+  level: string;
+  source: string;
+  message: string;
+  stack: string | null;
+  context: string | null;
+  sessionId: string | null;
+  roomId: string | null;
+  playerName: string | null;
+}
+
+interface SessionEvent {
+  id: number;
+  timestamp: number;
+  sessionId: string;
+  eventType: string;
+  roomId: string | null;
+  playerPosition: string | null;
+  details: string | null;
+}
+
+type AdminTab = 'rooms' | 'errors' | 'events';
 
 export function AdminPage() {
   const {
@@ -22,6 +48,53 @@ export function AdminPage() {
   } = useAdminStore();
 
   const [password, setPassword] = useState('');
+  const [activeTab, setActiveTab] = useState<AdminTab>('rooms');
+  const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
+  const [sessionEvents, setSessionEvents] = useState<SessionEvent[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+
+  // Get API base URL
+  const apiBase = import.meta.env.PROD
+    ? window.location.origin
+    : 'http://localhost:3001';
+
+  // Fetch error logs
+  const fetchErrorLogs = useCallback(async () => {
+    if (!authToken) return;
+    setLogsLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/api/analytics/errors?limit=200`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setErrorLogs(data.errors || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch error logs:', err);
+    } finally {
+      setLogsLoading(false);
+    }
+  }, [authToken, apiBase]);
+
+  // Fetch session events
+  const fetchSessionEvents = useCallback(async () => {
+    if (!authToken) return;
+    setLogsLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/api/analytics/events?limit=300`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSessionEvents(data.events || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch session events:', err);
+    } finally {
+      setLogsLoading(false);
+    }
+  }, [authToken, apiBase]);
 
   // Auto-connect if we have a token
   useEffect(() => {
@@ -29,6 +102,15 @@ export function AdminPage() {
       connect();
     }
   }, [authToken, isConnected, connect]);
+
+  // Load logs when tab changes
+  useEffect(() => {
+    if (activeTab === 'errors') {
+      fetchErrorLogs();
+    } else if (activeTab === 'events') {
+      fetchSessionEvents();
+    }
+  }, [activeTab, fetchErrorLogs, fetchSessionEvents]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,44 +178,95 @@ export function AdminPage() {
         </div>
       )}
 
-      <div className="admin-layout">
-        {/* Room list sidebar */}
-        <aside className="room-list">
-          <h2>Active Rooms ({rooms.length})</h2>
-          {rooms.length === 0 ? (
-            <div className="no-rooms">No active rooms</div>
-          ) : (
-            rooms.map((room) => (
-              <div
-                key={room.roomId}
-                className={`room-item ${selectedRoomId === room.roomId ? 'selected' : ''} ${room.status}`}
-                onClick={() => selectRoom(room.roomId)}
-              >
-                <div className="room-name">{room.roomName}</div>
-                <div className="room-meta">
-                  <span className={`room-status ${room.status}`}>
-                    {room.status === 'playing' ? `Hand ${room.handNumber}` : 'Waiting'}
-                  </span>
-                  <span className="player-count">
-                    {Object.values(room.players).filter(Boolean).length}/4
-                  </span>
-                </div>
-              </div>
-            ))
-          )}
-        </aside>
-
-        {/* Main content area */}
-        <main className="admin-main">
-          {selectedRoom ? (
-            <RoomDetail room={selectedRoom} />
-          ) : (
-            <div className="no-selection">
-              <p>Select a room to view details</p>
-            </div>
-          )}
-        </main>
+      {/* Tab navigation */}
+      <div className="admin-tabs">
+        <button
+          className={`tab-btn ${activeTab === 'rooms' ? 'active' : ''}`}
+          onClick={() => setActiveTab('rooms')}
+        >
+          Rooms ({rooms.length})
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'errors' ? 'active' : ''}`}
+          onClick={() => setActiveTab('errors')}
+        >
+          Errors ({errorLogs.length})
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'events' ? 'active' : ''}`}
+          onClick={() => setActiveTab('events')}
+        >
+          Events ({sessionEvents.length})
+        </button>
       </div>
+
+      {/* Rooms tab */}
+      {activeTab === 'rooms' && (
+        <div className="admin-layout">
+          {/* Room list sidebar */}
+          <aside className="room-list">
+            <h2>Active Rooms ({rooms.length})</h2>
+            {rooms.length === 0 ? (
+              <div className="no-rooms">No active rooms</div>
+            ) : (
+              rooms.map((room) => (
+                <div
+                  key={room.roomId}
+                  className={`room-item ${selectedRoomId === room.roomId ? 'selected' : ''} ${room.status}`}
+                  onClick={() => selectRoom(room.roomId)}
+                >
+                  <div className="room-name">{room.roomName}</div>
+                  <div className="room-meta">
+                    <span className={`room-status ${room.status}`}>
+                      {room.status === 'playing' ? `Hand ${room.handNumber}` : 'Waiting'}
+                    </span>
+                    <span className="player-count">
+                      {Object.values(room.players).filter(Boolean).length}/4
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </aside>
+
+          {/* Main content area */}
+          <main className="admin-main">
+            {selectedRoom ? (
+              <RoomDetail room={selectedRoom} />
+            ) : (
+              <div className="no-selection">
+                <p>Select a room to view details</p>
+              </div>
+            )}
+          </main>
+        </div>
+      )}
+
+      {/* Errors tab */}
+      {activeTab === 'errors' && (
+        <div className="logs-container">
+          <div className="logs-header">
+            <h2>Error Logs</h2>
+            <button className="refresh-btn" onClick={fetchErrorLogs} disabled={logsLoading}>
+              {logsLoading ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+          <ErrorLogsList logs={errorLogs} />
+        </div>
+      )}
+
+      {/* Events tab */}
+      {activeTab === 'events' && (
+        <div className="logs-container">
+          <div className="logs-header">
+            <h2>Session Events</h2>
+            <button className="refresh-btn" onClick={fetchSessionEvents} disabled={logsLoading}>
+              {logsLoading ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+          <SessionEventsList events={sessionEvents} />
+        </div>
+      )}
     </div>
   );
 }
@@ -299,4 +432,143 @@ function getSuitSymbol(suit: string): string {
     default:
       return suit;
   }
+}
+
+// Format timestamp for display
+function formatTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleString();
+}
+
+// Error logs list component
+function ErrorLogsList({ logs }: { logs: ErrorLog[] }) {
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Format error for copy/paste to Claude Code
+  const formatForClipboard = (log: ErrorLog) => {
+    let text = `Error: ${log.message}\n`;
+    text += `Source: ${log.source}\n`;
+    text += `Level: ${log.level}\n`;
+    text += `Time: ${formatTime(log.timestamp)}\n`;
+    if (log.playerName) text += `Player: ${log.playerName}\n`;
+    if (log.roomId) text += `Room: ${log.roomId}\n`;
+    if (log.sessionId) text += `Session: ${log.sessionId}\n`;
+    if (log.context) {
+      text += `Context: ${log.context}\n`;
+    }
+    if (log.stack) {
+      text += `Stack:\n${log.stack}\n`;
+    }
+    return text;
+  };
+
+  const copyToClipboard = async (log: ErrorLog) => {
+    try {
+      await navigator.clipboard.writeText(formatForClipboard(log));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  if (logs.length === 0) {
+    return <div className="no-logs">No error logs found</div>;
+  }
+
+  return (
+    <div className="logs-list">
+      {logs.map((log) => (
+        <div
+          key={log.id}
+          className={`log-item error-log ${log.level} ${expanded === log.id ? 'expanded' : ''}`}
+        >
+          <div className="log-header" onClick={() => setExpanded(expanded === log.id ? null : log.id)}>
+            <span className={`log-level ${log.level}`}>{log.level.toUpperCase()}</span>
+            <span className="log-source">[{log.source}]</span>
+            <span className="log-message">{log.message}</span>
+            <span className="log-time">{formatTime(log.timestamp)}</span>
+          </div>
+          {expanded === log.id && (
+            <div className="log-details">
+              {log.playerName && <div><strong>Player:</strong> {log.playerName}</div>}
+              {log.roomId && <div><strong>Room:</strong> {log.roomId}</div>}
+              {log.sessionId && <div><strong>Session:</strong> {log.sessionId}</div>}
+              {log.context && (
+                <div className="log-context">
+                  <strong>Context:</strong>
+                  <pre>{JSON.stringify(JSON.parse(log.context), null, 2)}</pre>
+                </div>
+              )}
+              {log.stack && (
+                <div className="log-stack">
+                  <strong>Stack trace:</strong>
+                  <pre>{log.stack}</pre>
+                </div>
+              )}
+              <button className="copy-btn" onClick={() => copyToClipboard(log)}>
+                {copied ? 'Copied!' : 'Copy for Claude Code'}
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Session events list component
+function SessionEventsList({ events }: { events: SessionEvent[] }) {
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const [filterType, setFilterType] = useState<string>('');
+
+  // Get unique event types for filter
+  const eventTypes = [...new Set(events.map(e => e.eventType))];
+
+  const filteredEvents = filterType
+    ? events.filter(e => e.eventType === filterType)
+    : events;
+
+  if (events.length === 0) {
+    return <div className="no-logs">No session events found</div>;
+  }
+
+  return (
+    <div className="events-container">
+      <div className="events-filter">
+        <label>Filter by type:</label>
+        <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+          <option value="">All types</option>
+          {eventTypes.map(type => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+        <span className="event-count">Showing {filteredEvents.length} of {events.length}</span>
+      </div>
+      <div className="logs-list">
+        {filteredEvents.map((event) => (
+          <div
+            key={event.id}
+            className={`log-item event-log ${expanded === event.id ? 'expanded' : ''}`}
+          >
+            <div className="log-header" onClick={() => setExpanded(expanded === event.id ? null : event.id)}>
+              <span className={`event-type type-${event.eventType}`}>{event.eventType}</span>
+              <span className="event-session">{event.sessionId.slice(0, 8)}...</span>
+              {event.playerPosition && <span className="event-position">{event.playerPosition}</span>}
+              {event.roomId && <span className="event-room">{event.roomId.slice(0, 8)}...</span>}
+              <span className="log-time">{formatTime(event.timestamp)}</span>
+            </div>
+            {expanded === event.id && event.details && (
+              <div className="log-details">
+                <div className="event-details">
+                  <strong>Details:</strong>
+                  <pre>{JSON.stringify(JSON.parse(event.details), null, 2)}</pre>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

@@ -116,6 +116,43 @@ export class AnalyticsDatabase {
       CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)
     `);
 
+    // Error logs table
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS error_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp INTEGER NOT NULL,
+        level TEXT NOT NULL,
+        source TEXT NOT NULL,
+        message TEXT NOT NULL,
+        stack TEXT,
+        context TEXT,
+        session_id TEXT,
+        room_id TEXT,
+        player_name TEXT
+      )
+    `);
+
+    // Session events table (detailed actions within sessions)
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS session_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp INTEGER NOT NULL,
+        session_id TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        room_id TEXT,
+        player_position TEXT,
+        details TEXT
+      )
+    `);
+
+    // Create indexes for error_logs and session_events
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_error_logs_timestamp ON error_logs(timestamp)
+    `);
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_session_events_session ON session_events(session_id)
+    `);
+
     // Initialize metadata if not exists
     const totalGames = this.db.prepare('SELECT value FROM metadata WHERE key = ?').get('totalGamesPlayed');
     if (!totalGames) {
@@ -428,5 +465,228 @@ export class AnalyticsDatabase {
       recentEvents: [],
       lastSaved: Date.now(),
     };
+  }
+
+  /**
+   * Log an error to the database
+   */
+  logError(error: {
+    level: 'error' | 'warn' | 'info';
+    source: string;
+    message: string;
+    stack?: string;
+    context?: Record<string, unknown>;
+    sessionId?: string;
+    roomId?: string;
+    playerName?: string;
+  }): void {
+    if (!this.db) return;
+
+    try {
+      this.db.prepare(`
+        INSERT INTO error_logs (timestamp, level, source, message, stack, context, session_id, room_id, player_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        Date.now(),
+        error.level,
+        error.source,
+        error.message,
+        error.stack ?? null,
+        error.context ? JSON.stringify(error.context) : null,
+        error.sessionId ?? null,
+        error.roomId ?? null,
+        error.playerName ?? null
+      );
+    } catch (e) {
+      console.error('[Analytics DB] Failed to log error:', e);
+    }
+  }
+
+  /**
+   * Log a session event
+   */
+  logSessionEvent(event: {
+    sessionId: string;
+    eventType: string;
+    roomId?: string;
+    playerPosition?: string;
+    details?: Record<string, unknown>;
+  }): void {
+    if (!this.db) return;
+
+    try {
+      this.db.prepare(`
+        INSERT INTO session_events (timestamp, session_id, event_type, room_id, player_position, details)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(
+        Date.now(),
+        event.sessionId,
+        event.eventType,
+        event.roomId ?? null,
+        event.playerPosition ?? null,
+        event.details ? JSON.stringify(event.details) : null
+      );
+    } catch (e) {
+      console.error('[Analytics DB] Failed to log session event:', e);
+    }
+  }
+
+  /**
+   * Get recent error logs
+   */
+  getErrorLogs(limit: number = 100): Array<{
+    id: number;
+    timestamp: number;
+    level: string;
+    source: string;
+    message: string;
+    stack: string | null;
+    context: string | null;
+    sessionId: string | null;
+    roomId: string | null;
+    playerName: string | null;
+  }> {
+    if (!this.db) return [];
+
+    try {
+      const rows = this.db.prepare(`
+        SELECT id, timestamp, level, source, message, stack, context, session_id, room_id, player_name
+        FROM error_logs
+        ORDER BY timestamp DESC
+        LIMIT ?
+      `).all(limit) as Array<{
+        id: number;
+        timestamp: number;
+        level: string;
+        source: string;
+        message: string;
+        stack: string | null;
+        context: string | null;
+        session_id: string | null;
+        room_id: string | null;
+        player_name: string | null;
+      }>;
+
+      return rows.map(r => ({
+        id: r.id,
+        timestamp: r.timestamp,
+        level: r.level,
+        source: r.source,
+        message: r.message,
+        stack: r.stack,
+        context: r.context,
+        sessionId: r.session_id,
+        roomId: r.room_id,
+        playerName: r.player_name,
+      }));
+    } catch (e) {
+      console.error('[Analytics DB] Failed to get error logs:', e);
+      return [];
+    }
+  }
+
+  /**
+   * Get session events for a specific session
+   */
+  getSessionEvents(sessionId: string, limit: number = 500): Array<{
+    id: number;
+    timestamp: number;
+    eventType: string;
+    roomId: string | null;
+    playerPosition: string | null;
+    details: string | null;
+  }> {
+    if (!this.db) return [];
+
+    try {
+      const rows = this.db.prepare(`
+        SELECT id, timestamp, event_type, room_id, player_position, details
+        FROM session_events
+        WHERE session_id = ?
+        ORDER BY timestamp ASC
+        LIMIT ?
+      `).all(sessionId, limit) as Array<{
+        id: number;
+        timestamp: number;
+        event_type: string;
+        room_id: string | null;
+        player_position: string | null;
+        details: string | null;
+      }>;
+
+      return rows.map(r => ({
+        id: r.id,
+        timestamp: r.timestamp,
+        eventType: r.event_type,
+        roomId: r.room_id,
+        playerPosition: r.player_position,
+        details: r.details,
+      }));
+    } catch (e) {
+      console.error('[Analytics DB] Failed to get session events:', e);
+      return [];
+    }
+  }
+
+  /**
+   * Get recent session events (for live debugging)
+   */
+  getRecentSessionEvents(limit: number = 200): Array<{
+    id: number;
+    timestamp: number;
+    sessionId: string;
+    eventType: string;
+    roomId: string | null;
+    playerPosition: string | null;
+    details: string | null;
+  }> {
+    if (!this.db) return [];
+
+    try {
+      const rows = this.db.prepare(`
+        SELECT id, timestamp, session_id, event_type, room_id, player_position, details
+        FROM session_events
+        ORDER BY timestamp DESC
+        LIMIT ?
+      `).all(limit) as Array<{
+        id: number;
+        timestamp: number;
+        session_id: string;
+        event_type: string;
+        room_id: string | null;
+        player_position: string | null;
+        details: string | null;
+      }>;
+
+      return rows.map(r => ({
+        id: r.id,
+        timestamp: r.timestamp,
+        sessionId: r.session_id,
+        eventType: r.event_type,
+        roomId: r.room_id,
+        playerPosition: r.player_position,
+        details: r.details,
+      }));
+    } catch (e) {
+      console.error('[Analytics DB] Failed to get recent session events:', e);
+      return [];
+    }
+  }
+
+  /**
+   * Clear old logs (keep last N days)
+   */
+  cleanupOldLogs(daysToKeep: number = 30): void {
+    if (!this.db) return;
+
+    const cutoff = Date.now() - daysToKeep * 24 * 60 * 60 * 1000;
+
+    try {
+      this.db.prepare('DELETE FROM error_logs WHERE timestamp < ?').run(cutoff);
+      this.db.prepare('DELETE FROM session_events WHERE timestamp < ?').run(cutoff);
+      console.log(`[Analytics DB] Cleaned up logs older than ${daysToKeep} days`);
+    } catch (e) {
+      console.error('[Analytics DB] Failed to cleanup old logs:', e);
+    }
   }
 }
