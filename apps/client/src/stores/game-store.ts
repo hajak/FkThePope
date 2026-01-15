@@ -86,15 +86,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Handle race condition where card-played arrives before game-state
     // We need to preserve locally added cards that the server doesn't know about yet
     const sameHand = existingHand?.number === newHand?.number;
+    const existingCardsCount = existingTrick?.cards?.length ?? 0;
 
-    if (existingTrick?.cards?.length && newHand && sameHand) {
-      const existingTrickNum = existingTrick.trickNumber ?? 0;
+    // Don't try to preserve a completed trick (4 cards) - it should be cleared
+    if (existingCardsCount > 0 && existingCardsCount < 4 && newHand && sameHand) {
+      const existingTrickNum = existingTrick?.trickNumber ?? 0;
       const newTrickNum = newTrick?.trickNumber ?? 0;
+      const newCardsCount = newTrick?.cards?.length ?? 0;
       const expectedTrickNum = (newHand.completedTricks?.length ?? 0) + 1;
 
       // Case 1: Local trick is AHEAD of server (we have cards for new trick, server is behind)
       // This happens when card-played arrives before game-state updates
-      if (existingTrickNum === expectedTrickNum && existingTrickNum > newTrickNum) {
+      if (existingTrick && existingTrickNum === expectedTrickNum && existingTrickNum > newTrickNum) {
         // Keep our local trick entirely - server will catch up
         set({
           gameState: {
@@ -108,9 +111,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         return;
       }
 
-      // Case 2: Same trick number - merge cards
-      if (existingTrickNum === newTrickNum || (!newTrickNum && existingTrickNum === 1)) {
-        const existingCards = existingTrick.cards;
+      // Case 2: Same trick number - merge cards if we have more locally
+      if (existingTrickNum === newTrickNum && existingCardsCount > newCardsCount) {
+        const existingCards = existingTrick!.cards;
         const newCards = newTrick?.cards ?? [];
 
         // Merge: add any cards from existing trick that aren't in new trick
@@ -121,8 +124,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           }
         }
 
-        // Only merge if we have more cards locally
-        if (mergedCards.length > newCards.length && mergedCards[0]) {
+        if (mergedCards[0]) {
           const firstCard = mergedCards[0];
           set({
             gameState: {
@@ -191,24 +193,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // Get current trick, but check if it's stale (from a previous completed trick)
       let currentTrick = state.gameState.currentHand.currentTrick;
 
-      // If current trick is null OR stale (trickNumber doesn't match expected), start fresh
-      if (!currentTrick || currentTrick.trickNumber !== expectedTrickNumber) {
-        currentTrick = {
-          cards: [],
-          leadSuit: card.suit, // First card sets the lead suit
-          leader: player, // First player to play leads
-          currentPlayer: player,
-          trickNumber: expectedTrickNumber,
-        };
-      }
+      // A trick is stale/completed if:
+      // 1. It's null
+      // 2. It has 4 cards (a completed trick)
+      // 3. Its trickNumber doesn't match expected (completedTricks might be stale)
+      const isStaleOrCompleted = !currentTrick ||
+        currentTrick.cards.length >= 4 ||
+        currentTrick.trickNumber !== expectedTrickNumber;
 
-      const currentCards = currentTrick.cards;
+      // Create the trick to use (either existing or fresh)
+      const trickToUse: TrickState = isStaleOrCompleted
+        ? {
+            cards: [],
+            leadSuit: card.suit, // First card sets the lead suit
+            leader: player, // First player to play leads
+            currentPlayer: player,
+            trickNumber: expectedTrickNumber,
+          }
+        : currentTrick;
+
+      const currentCards = trickToUse.cards;
 
       // Don't add if already present in THIS trick
       if (currentCards.some((c) => c.playedBy === player)) return state;
 
       const updatedTrick = {
-        ...currentTrick,
+        ...trickToUse,
         cards: [...currentCards, newCard],
       };
 
