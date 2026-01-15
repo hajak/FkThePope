@@ -236,10 +236,13 @@ export function AdminPage() {
               <div className="no-rooms">No active rooms on server</div>
             )}
             {rooms.map((room) => (
-              <div
+              <button
+                type="button"
                 key={room.roomId}
                 className={`room-item ${selectedRoomId === room.roomId ? 'selected' : ''} ${room.status}`}
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   console.log('[Admin] Clicking room:', room.roomId);
                   selectRoom(room.roomId);
                 }}
@@ -253,7 +256,7 @@ export function AdminPage() {
                     {Object.values(room.players).filter(Boolean).length}/4
                   </span>
                 </div>
-              </div>
+              </button>
             ))}
           </aside>
 
