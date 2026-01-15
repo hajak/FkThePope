@@ -164,29 +164,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   // Set game state but preserve current trick if we're animating
+  // NOTE: We no longer overwrite currentTrick with preservedTrick here.
+  // The useCurrentTrick hook handles displaying the preserved trick during animation.
+  // This allows new cards played during animation to still be stored in gameState.
   setGameStatePreservingTrick: (state) => {
-    const { isPreservingTrick, preservedTrick } = get();
-
-    if (!state) {
-      set({ gameState: state });
-      return;
-    }
-
-    // If we're preserving the trick for animation, keep showing it
-    if (isPreservingTrick && preservedTrick && state.currentHand) {
-      set({
-        gameState: {
-          ...state,
-          currentHand: {
-            ...state.currentHand,
-            currentTrick: preservedTrick,
-          },
-        },
-      });
-    } else {
-      // Not animating, use normal merge logic
-      get().setGameState(state);
-    }
+    // Always use the normal setGameState - it will merge local cards properly.
+    // The useCurrentTrick hook will return preservedTrick when animating,
+    // so the display will show the completed trick while we store the new one.
+    get().setGameState(state);
   },
 
   setSelectedCard: (card) => set({ selectedCard: card }),

@@ -2,7 +2,7 @@
 
 ```yaml
 - generic [ref=e4]:
-  - generic [ref=e5]: v1.48
+  - generic [ref=e5]: v1.49
   - generic [ref=e6]:
     - generic [ref=e7]:
       - generic [ref=e8]:
