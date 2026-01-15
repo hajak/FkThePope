@@ -164,16 +164,16 @@ export function AdminPage() {
         </div>
         <div className="admin-stats">
           <div className="stat-pill">
+            <span className="stat-label">Connections:</span>
             <span className="stat-value">{totalConnections}</span>
-            <span className="stat-label">Connections</span>
           </div>
           <div className="stat-pill">
+            <span className="stat-label">Rooms:</span>
             <span className="stat-value">{rooms.length}</span>
-            <span className="stat-label">Rooms</span>
           </div>
           <div className="stat-pill uptime">
+            <span className="stat-label">Uptime:</span>
             <span className="stat-value">{formatUptime(serverUptime)}</span>
-            <span className="stat-label">Uptime</span>
           </div>
         </div>
         <button className="logout-btn" onClick={logout}>
