@@ -68,9 +68,11 @@ async function start() {
   });
 
   // Graceful shutdown
-  process.on('SIGTERM', async () => {
+  process.on('SIGTERM', () => {
     console.log('SIGTERM received, saving analytics...');
-    await AnalyticsManager.getInstance().forceSave();
+    const analytics = AnalyticsManager.getInstance();
+    analytics.forceSave();
+    analytics.close();
     process.exit(0);
   });
 }

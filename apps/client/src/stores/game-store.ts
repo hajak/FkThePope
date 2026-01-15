@@ -46,6 +46,64 @@ interface GameStore {
   reset: () => void;
 }
 
+/**
+ * Helper: Check if a trick is complete (has 4 cards)
+ */
+function isTrickComplete(trick: TrickState | null | undefined): boolean {
+  return (trick?.cards?.length ?? 0) >= 4;
+}
+
+/**
+ * Helper: Merge local cards into server state when we have more recent cards locally.
+ * Returns the trick to use, or null if no merging needed.
+ */
+function mergeLocalCards(
+  localTrick: TrickState | null | undefined,
+  serverTrick: TrickState | null | undefined,
+  localHandNum: number | undefined,
+  serverHandNum: number | undefined
+): TrickState | null {
+  // Don't merge if different hands
+  if (localHandNum !== serverHandNum) return null;
+
+  // Don't merge if local trick is complete (4 cards) - it should be cleared
+  if (isTrickComplete(localTrick)) return null;
+
+  // Don't merge if no local cards
+  const localCards = localTrick?.cards ?? [];
+  if (localCards.length === 0) return null;
+
+  const serverCards = serverTrick?.cards ?? [];
+
+  // Only merge if we have MORE cards locally than server
+  if (localCards.length <= serverCards.length) return null;
+
+  // Build merged cards: start with server cards, add any local cards not in server
+  const mergedCards = [...serverCards];
+  for (const localCard of localCards) {
+    const alreadyInServer = serverCards.some(sc => sc.playedBy === localCard.playedBy);
+    if (!alreadyInServer) {
+      mergedCards.push(localCard);
+    }
+  }
+
+  // If no new cards were added, no need to merge
+  if (mergedCards.length === serverCards.length) return null;
+
+  // Return merged trick
+  const firstCard = mergedCards[0];
+  if (!firstCard) return null;
+
+  return {
+    cards: mergedCards,
+    leadSuit: serverTrick?.leadSuit ?? localTrick?.leadSuit ?? firstCard.card.suit,
+    leader: serverTrick?.leader ?? localTrick?.leader ?? firstCard.playedBy,
+    currentPlayer: serverTrick?.currentPlayer ?? localTrick?.currentPlayer ?? firstCard.playedBy,
+    trickNumber: serverTrick?.trickNumber ?? localTrick?.trickNumber ?? 1,
+    winner: serverTrick?.winner ?? localTrick?.winner,
+  };
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   // Initial state
   isConnected: false,
@@ -75,75 +133,30 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
 
-    // Merge current trick cards to avoid race condition where card-played arrives
-    // before game-state and then game-state overwrites the card
     const currentState = get();
-    const existingHand = currentState.gameState?.currentHand;
-    const existingTrick = existingHand?.currentTrick;
-    const newHand = state.currentHand;
-    const newTrick = newHand?.currentTrick;
+    const localHand = currentState.gameState?.currentHand;
+    const serverHand = state.currentHand;
 
-    // Handle race condition where card-played arrives before game-state
-    // We need to preserve locally added cards that the server doesn't know about yet
-    const sameHand = existingHand?.number === newHand?.number;
-    const existingCardsCount = existingTrick?.cards?.length ?? 0;
+    // Try to merge local cards that server doesn't have yet
+    if (localHand && serverHand) {
+      const mergedTrick = mergeLocalCards(
+        localHand.currentTrick,
+        serverHand.currentTrick,
+        localHand.number,
+        serverHand.number
+      );
 
-    // Don't try to preserve a completed trick (4 cards) - it should be cleared
-    if (existingCardsCount > 0 && existingCardsCount < 4 && newHand && sameHand) {
-      const existingTrickNum = existingTrick?.trickNumber ?? 0;
-      const newTrickNum = newTrick?.trickNumber ?? 0;
-      const newCardsCount = newTrick?.cards?.length ?? 0;
-      const expectedTrickNum = (newHand.completedTricks?.length ?? 0) + 1;
-
-      // Case 1: Local trick is AHEAD of server (we have cards for new trick, server is behind)
-      // This happens when card-played arrives before game-state updates
-      if (existingTrick && existingTrickNum === expectedTrickNum && existingTrickNum > newTrickNum) {
-        // Keep our local trick entirely - server will catch up
+      if (mergedTrick) {
         set({
           gameState: {
             ...state,
             currentHand: {
-              ...newHand,
-              currentTrick: existingTrick,
+              ...serverHand,
+              currentTrick: mergedTrick,
             },
           },
         });
         return;
-      }
-
-      // Case 2: Same trick number - merge cards if we have more locally
-      if (existingTrickNum === newTrickNum && existingCardsCount > newCardsCount) {
-        const existingCards = existingTrick!.cards;
-        const newCards = newTrick?.cards ?? [];
-
-        // Merge: add any cards from existing trick that aren't in new trick
-        const mergedCards = [...newCards];
-        for (const existingCard of existingCards) {
-          if (!mergedCards.some(c => c.playedBy === existingCard.playedBy)) {
-            mergedCards.push(existingCard);
-          }
-        }
-
-        if (mergedCards[0]) {
-          const firstCard = mergedCards[0];
-          set({
-            gameState: {
-              ...state,
-              currentHand: {
-                ...newHand,
-                currentTrick: {
-                  cards: mergedCards,
-                  leadSuit: newTrick?.leadSuit ?? firstCard.card.suit,
-                  leader: newTrick?.leader ?? firstCard.playedBy,
-                  currentPlayer: newTrick?.currentPlayer ?? mergedCards[mergedCards.length - 1]?.playedBy ?? firstCard.playedBy,
-                  trickNumber: newTrick?.trickNumber ?? expectedTrickNum,
-                  winner: newTrick?.winner,
-                },
-              },
-            },
-          });
-          return;
-        }
       }
     }
 
@@ -159,7 +172,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
 
-    // If we're preserving the trick, merge the preserved trick into the new state
+    // If we're preserving the trick for animation, keep showing it
     if (isPreservingTrick && preservedTrick && state.currentHand) {
       set({
         gameState: {
@@ -171,7 +184,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         },
       });
     } else {
-      set({ gameState: state });
+      // Not animating, use normal merge logic
+      get().setGameState(state);
     }
   },
 
@@ -186,51 +200,55 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // Need at least gameState and currentHand to add a card
       if (!state.gameState?.currentHand) return state;
 
+      const currentHand = state.gameState.currentHand;
+      const currentTrick = currentHand.currentTrick;
       const newCard: PlayedCard = { card, playedBy: player, faceDown, playedAt: Date.now() };
-      const completedTricksCount = state.gameState.currentHand.completedTricks?.length ?? 0;
-      const expectedTrickNumber = completedTricksCount + 1;
 
-      // Get current trick, but check if it's stale (from a previous completed trick)
-      let currentTrick = state.gameState.currentHand.currentTrick;
+      // Determine if we need a fresh trick:
+      // 1. No current trick exists
+      // 2. Current trick is complete (4 cards)
+      const needFreshTrick = !currentTrick || isTrickComplete(currentTrick);
 
-      // A trick is stale/completed if:
-      // 1. It's null
-      // 2. It has 4 cards (a completed trick)
-      // 3. Its trickNumber doesn't match expected (completedTricks might be stale)
-      const isStaleOrCompleted = !currentTrick ||
-        currentTrick.cards.length >= 4 ||
-        currentTrick.trickNumber !== expectedTrickNumber;
+      if (needFreshTrick) {
+        // Create a fresh trick
+        const newTrickNumber = (currentHand.completedTricks?.length ?? 0) + 1;
+        const freshTrick: TrickState = {
+          cards: [newCard],
+          leadSuit: card.suit,
+          leader: player,
+          currentPlayer: player,
+          trickNumber: newTrickNumber,
+        };
 
-      // Create the trick to use (either existing or fresh)
-      const trickToUse: TrickState = isStaleOrCompleted
-        ? {
-            cards: [],
-            leadSuit: card.suit, // First card sets the lead suit
-            leader: player, // First player to play leads
-            currentPlayer: player,
-            trickNumber: expectedTrickNumber,
-          }
-        : currentTrick;
+        return {
+          gameState: {
+            ...state.gameState,
+            currentHand: {
+              ...currentHand,
+              currentTrick: freshTrick,
+            },
+          },
+        };
+      }
 
-      const currentCards = trickToUse.cards;
+      // Add to existing trick (if player hasn't already played)
+      if (currentTrick.cards.some((c) => c.playedBy === player)) {
+        return state; // Player already has a card in this trick
+      }
 
-      // Don't add if already present in THIS trick
-      if (currentCards.some((c) => c.playedBy === player)) return state;
-
-      const updatedTrick = {
-        ...trickToUse,
-        cards: [...currentCards, newCard],
+      const updatedTrick: TrickState = {
+        ...currentTrick,
+        cards: [...currentTrick.cards, newCard],
       };
 
       return {
         gameState: {
           ...state.gameState,
           currentHand: {
-            ...state.gameState.currentHand,
+            ...currentHand,
             currentTrick: updatedTrick,
           },
         },
-        // Don't update preserved trick - it should be a frozen snapshot for animation
       };
     }),
 

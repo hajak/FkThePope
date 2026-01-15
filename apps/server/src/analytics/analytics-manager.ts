@@ -1,6 +1,6 @@
 import { randomBytes, createHash } from 'crypto';
 import type { PlayerPosition } from '@fkthepope/shared';
-import { AnalyticsStorage } from './analytics-storage.js';
+import { AnalyticsDatabase } from './analytics-db.js';
 import type {
   SessionData,
   GameEvent,
@@ -62,7 +62,7 @@ function getPeriodCutoff(period: TimePeriod): number {
 export class AnalyticsManager {
   private static instance: AnalyticsManager;
 
-  private storage: AnalyticsStorage;
+  private storage: AnalyticsDatabase;
   private activeSessions: Map<string, SessionData> = new Map();
   private activeGameCount: number = 0;
   private gameStartTimes: Map<string, number> = new Map();
@@ -86,7 +86,7 @@ export class AnalyticsManager {
   private recentEvents: GameEvent[] = [];
 
   private constructor() {
-    this.storage = new AnalyticsStorage();
+    this.storage = new AnalyticsDatabase();
   }
 
   static getInstance(): AnalyticsManager {
@@ -100,17 +100,17 @@ export class AnalyticsManager {
     // Load geoip module
     await loadGeoip();
 
-    // Load persisted data
-    const data = await this.storage.initialize();
+    // Load persisted data from SQLite
+    const data = this.storage.initialize();
     this.loadFromPersisted(data);
 
-    // Start auto-save
-    this.storage.startAutoSave(() => this.toPersisted(), 300000); // 5 minutes
+    // Start auto-save (every 60 seconds for SQLite - it's fast)
+    this.storage.startAutoSave(() => this.toPersisted(), 60000);
 
     // Cleanup stale sessions every minute
     setInterval(() => this.cleanupStaleSessions(), 60000);
 
-    console.log('[Analytics] Initialized');
+    console.log('[Analytics] Initialized with SQLite storage');
   }
 
   private loadFromPersisted(data: PersistedAnalytics): void {
@@ -550,7 +550,12 @@ export class AnalyticsManager {
   }
 
   // Force save (for graceful shutdown)
-  async forceSave(): Promise<void> {
-    await this.storage.save(this.toPersisted());
+  forceSave(): void {
+    this.storage.save(this.toPersisted());
+  }
+
+  // Close database connection (for graceful shutdown)
+  close(): void {
+    this.storage.close();
   }
 }
