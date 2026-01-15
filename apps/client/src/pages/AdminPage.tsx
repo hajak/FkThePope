@@ -103,6 +103,17 @@ export function AdminPage() {
     }
   }, [authToken, isConnected, connect]);
 
+  // Periodic refresh to ensure data stays up-to-date (every 30 seconds)
+  useEffect(() => {
+    if (isConnected && activeTab === 'rooms') {
+      const interval = setInterval(() => {
+        // Re-subscribe to get fresh data
+        connect();
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isConnected, activeTab, connect]);
+
   // Load logs when tab changes
   useEffect(() => {
     if (activeTab === 'errors') {

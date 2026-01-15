@@ -151,23 +151,27 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
       return;
     }
 
-    // Don't create duplicate connections
-    if (existingSocket?.connected) {
-      return;
-    }
-
-    // Disconnect existing socket if any
+    // Don't create duplicate connections - check both connected AND connecting states
     if (existingSocket) {
+      if (existingSocket.connected) {
+        // Already connected, just subscribe again to refresh data
+        existingSocket.emit('subscribe');
+        return;
+      }
+      // Socket exists but disconnected - disconnect and recreate
       existingSocket.disconnect();
     }
+
+    console.log('[Admin] Creating new socket connection...');
 
     // Connect to admin namespace
     const socket = io(`${getSocketUrl()}/admin`, {
       auth: { token: authToken },
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      timeout: 10000,
     });
 
     socket.on('connect', () => {

@@ -223,10 +223,8 @@
 /* Layout */
 .admin-layout {
   display: flex;
-  flex: 1;
-  min-height: 0;
-  height: calc(100vh - 130px);
-  overflow: hidden;
+  min-height: 400px;
+  height: calc(100vh - 180px);
 }
 
 /* Room list sidebar */
