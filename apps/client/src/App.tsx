@@ -4,6 +4,7 @@ import { useGameStore } from './stores/game-store';
 import { LobbyPage } from './pages/LobbyPage';
 import { GamePage } from './pages/GamePage';
 import { DashboardPage } from './pages/DashboardPage';
+import { AdminPage } from './pages/AdminPage';
 import { Toast } from './components/ui/Toast';
 import { ConnectionStatus } from './components/ui/ConnectionStatus';
 
@@ -30,6 +31,7 @@ export function App() {
           }
         />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/admin" element={<AdminPage />} />
       </Routes>
       <Toast />
     </div>

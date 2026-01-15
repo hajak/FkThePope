@@ -79,3 +79,10 @@ export function analyticsLogoutHandler(req: Request, res: Response): void {
   }
   res.json({ success: true });
 }
+
+/**
+ * Validate a token for admin socket connections
+ */
+export function validateAdminToken(token: string): boolean {
+  return validTokens.has(token);
+}

@@ -23,15 +23,23 @@ import {
   RejectPlayerSchema,
 } from '../validation/schemas.js';
 import { AnalyticsManager } from '../analytics/index.js';
+import {
+  notifyAdminOfRoomUpdate,
+  notifyAdminOfRoomCreated,
+  notifyAdminOfRoomDeleted,
+  setClientMetadata,
+  removeClientMetadata,
+} from '../admin/index.js';
 
 // Required client version - clients must match this exactly
-const REQUIRED_VERSION = '1.39';
+const REQUIRED_VERSION = '1.40';
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
 
-const lobbyManager = new LobbyManager();
-const activeGames = new Map<string, GameManager>();
+// Export for admin dashboard access
+export const lobbyManager = new LobbyManager();
+export const activeGames = new Map<string, GameManager>();
 // Track which players have clicked "Continue" after a hand completes
 const pendingContinues = new Map<string, Set<PlayerPosition>>();
 
@@ -72,6 +80,9 @@ export function setupSocketHandlers(io: GameServer): void {
 
     AnalyticsManager.getInstance().startSession(socket.id, clientId, deviceType, ip, clientVersion);
 
+    // Track client metadata for admin dashboard
+    setClientMetadata(socket.id, { version: clientVersion, deviceType });
+
     // Send connection confirmation
     socket.emit('connected', { playerId: socket.data.playerId });
 
@@ -80,6 +91,8 @@ export function setupSocketHandlers(io: GameServer): void {
       console.log(`Client disconnected: ${socket.id}`);
       // End analytics session
       AnalyticsManager.getInstance().endSession(socket.id);
+      // Remove client metadata
+      removeClientMetadata(socket.id);
       // Remove from any pending lists
       lobbyManager.removePendingPlayer(socket.id);
       handleDisconnect(socket, io);
@@ -227,6 +240,9 @@ function handleCreateRoom(
 
   // Broadcast updated room list
   io.emit('lobby-state', { rooms: lobbyManager.getRoomList() });
+
+  // Notify admin dashboard
+  notifyAdminOfRoomCreated(room.id);
 }
 
 /**
@@ -410,6 +426,8 @@ function handleLeaveRoom(socket: GameSocket, io: GameServer): void {
       io.to(result.roomId).emit('room-updated', {
         players: getPlayerViews(result.roomId),
       });
+      // Notify admin dashboard
+      notifyAdminOfRoomUpdate(result.roomId);
     } else {
       // Only clean up game if room is deleted (no human players left)
       // Track game end if there was an active game
@@ -417,6 +435,8 @@ function handleLeaveRoom(socket: GameSocket, io: GameServer): void {
         AnalyticsManager.getInstance().recordGameEnded(result.roomId);
       }
       activeGames.delete(result.roomId);
+      // Notify admin dashboard of deletion
+      notifyAdminOfRoomDeleted(result.roomId);
     }
   }
 
@@ -497,6 +517,9 @@ function handleStartGame(socket: GameSocket, io: GameServer): void {
   // Update lobby
   io.emit('lobby-state', { rooms: lobbyManager.getRoomList() });
 
+  // Notify admin dashboard
+  notifyAdminOfRoomUpdate(roomId);
+
   // Process bot turns if the first player is a bot
   processBotTurns(io, roomId, gameManager);
 }
@@ -551,6 +574,9 @@ function handlePlayCard(
     card,
     faceDown,
   });
+
+  // Notify admin dashboard of state change
+  notifyAdminOfRoomUpdate(roomId);
 
   // Handle trick completion
   if (result.trickComplete) {

@@ -426,6 +426,13 @@ export class LobbyManager {
   }
 
   /**
+   * Get all rooms (for admin dashboard)
+   */
+  getAllRooms(): Room[] {
+    return Array.from(this.rooms.values());
+  }
+
+  /**
    * Get player position in their room
    */
   getPlayerPosition(socketId: string): PlayerPosition | undefined {

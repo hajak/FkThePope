@@ -4,8 +4,9 @@ import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import type { ClientToServerEvents, ServerToClientEvents, SocketData } from '@fkthepope/shared';
-import { setupSocketHandlers } from './socket/socket-handlers.js';
+import { setupSocketHandlers, lobbyManager, activeGames } from './socket/socket-handlers.js';
 import { AnalyticsManager, createAnalyticsRouter } from './analytics/index.js';
+import { setupAdminSocketHandlers } from './admin/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -61,6 +62,9 @@ async function start() {
 
   // Setup socket handlers
   setupSocketHandlers(io);
+
+  // Setup admin socket handlers (for admin dashboard)
+  setupAdminSocketHandlers(io, lobbyManager, activeGames);
 
   httpServer.listen(PORT, () => {
     console.log(`Online Whist server running on port ${PORT}`);

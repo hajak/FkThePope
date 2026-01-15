@@ -233,6 +233,79 @@ export class GameManager {
   }
 
   /**
+   * Get full admin state (all hands visible, for admin dashboard)
+   */
+  getAdminState(): {
+    phase: string;
+    players: Record<PlayerPosition, { hand: Card[]; tricksWon: number; name: string; isBot: boolean } | null>;
+    currentTrick: {
+      cards: Array<{ card: Card; playedBy: PlayerPosition; faceDown: boolean }>;
+      leadSuit: Suit | null;
+      trickNumber: number;
+    } | null;
+    completedTricks: Array<{
+      cards: Array<{ card: Card; playedBy: PlayerPosition; faceDown: boolean }>;
+      winner: PlayerPosition;
+    }>;
+    trumpSuit: Suit | null;
+    currentPlayer: PlayerPosition | null;
+    scores: Record<PlayerPosition, number>;
+    handNumber: number;
+  } {
+    const currentHand = this.state.currentHand;
+    return {
+      phase: this.state.phase,
+      players: {
+        north: this.state.players.north ? {
+          hand: this.state.players.north.hand,
+          tricksWon: this.state.players.north.tricksWon,
+          name: this.state.players.north.name,
+          isBot: this.state.players.north.isBot,
+        } : null,
+        east: this.state.players.east ? {
+          hand: this.state.players.east.hand,
+          tricksWon: this.state.players.east.tricksWon,
+          name: this.state.players.east.name,
+          isBot: this.state.players.east.isBot,
+        } : null,
+        south: this.state.players.south ? {
+          hand: this.state.players.south.hand,
+          tricksWon: this.state.players.south.tricksWon,
+          name: this.state.players.south.name,
+          isBot: this.state.players.south.isBot,
+        } : null,
+        west: this.state.players.west ? {
+          hand: this.state.players.west.hand,
+          tricksWon: this.state.players.west.tricksWon,
+          name: this.state.players.west.name,
+          isBot: this.state.players.west.isBot,
+        } : null,
+      },
+      currentTrick: currentHand?.currentTrick ? {
+        cards: currentHand.currentTrick.cards.map(pc => ({
+          card: pc.card,
+          playedBy: pc.playedBy,
+          faceDown: pc.faceDown,
+        })),
+        leadSuit: currentHand.currentTrick.leadSuit,
+        trickNumber: currentHand.currentTrick.trickNumber,
+      } : null,
+      completedTricks: currentHand?.completedTricks?.map(t => ({
+        cards: t.cards.map(pc => ({
+          card: pc.card,
+          playedBy: pc.playedBy,
+          faceDown: pc.faceDown,
+        })),
+        winner: t.winner!,
+      })) ?? [],
+      trumpSuit: currentHand?.trumpSuit ?? null,
+      currentPlayer: getCurrentPlayer(this.state),
+      scores: this.state.scores,
+      handNumber: currentHand?.number ?? 0,
+    };
+  }
+
+  /**
    * Get current player whose turn it is
    */
   getCurrentPlayer(): PlayerPosition | null {
