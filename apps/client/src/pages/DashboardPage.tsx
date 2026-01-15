@@ -120,42 +120,96 @@ function CountryTable({ data, title }: { data: Record<string, number>; title: st
   );
 }
 
-function VersionChart({ data, title }: { data: Record<string, number>; title: string }) {
-  const sorted = Object.entries(data)
-    .sort((a, b) => {
-      // Sort by version number (descending), with 'unknown' at the end
-      if (a[0] === 'unknown') return 1;
-      if (b[0] === 'unknown') return -1;
-      return b[0].localeCompare(a[0], undefined, { numeric: true });
-    })
-    .slice(0, 8); // Show top 8 versions
+// Generate a color for a version based on index
+function getVersionColor(_version: string, index: number): string {
+  const colors = [
+    '#3b82f6', // blue
+    '#10b981', // emerald
+    '#f59e0b', // amber
+    '#ef4444', // red
+    '#8b5cf6', // violet
+    '#06b6d4', // cyan
+    '#f97316', // orange
+    '#ec4899', // pink
+    '#84cc16', // lime
+    '#6366f1', // indigo
+  ];
+  return colors[index % colors.length] || '#64748b';
+}
 
-  const total = sorted.reduce((sum, [, count]) => sum + count, 0);
-  const maxCount = Math.max(...sorted.map(([, count]) => count), 1);
+function VersionStackedChart({ data, title }: { data: Array<{ date: string; versions: Record<string, number> }>; title: string }) {
+  // Get all unique versions across all days
+  const allVersions = new Set<string>();
+  for (const day of data) {
+    for (const version of Object.keys(day.versions)) {
+      allVersions.add(version);
+    }
+  }
+
+  // Sort versions: newest first, unknown last
+  const sortedVersions = Array.from(allVersions).sort((a, b) => {
+    if (a === 'unknown') return 1;
+    if (b === 'unknown') return -1;
+    return b.localeCompare(a, undefined, { numeric: true });
+  });
+
+  // Find max total per day for scaling
+  const maxTotal = Math.max(...data.map(day =>
+    Object.values(day.versions).reduce((sum, count) => sum + count, 0)
+  ), 1);
+
+  // Filter to only show days with data
+  const dataWithContent = data.filter(day => Object.keys(day.versions).length > 0);
 
   return (
     <div className="chart-container">
       <h3>{title}</h3>
-      <div className="version-chart">
-        {sorted.length === 0 ? (
+      <div className="stacked-chart">
+        {dataWithContent.length === 0 ? (
           <div className="no-data">No data yet</div>
         ) : (
-          sorted.map(([version, count]) => {
-            const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-            const barWidth = (count / maxCount) * 100;
-            return (
-              <div key={version} className="version-bar-row">
-                <span className="version-label">v{version}</span>
-                <div className="version-bar-container">
-                  <div
-                    className="version-bar-fill"
-                    style={{ width: `${barWidth}%` }}
+          <>
+            <div className="stacked-bars">
+              {data.map((day, i) => {
+                const total = Object.values(day.versions).reduce((sum, count) => sum + count, 0);
+                return (
+                  <div key={i} className="stacked-bar-column">
+                    <div className="stacked-bar-wrapper" style={{ height: `${(total / maxTotal) * 100}%` }}>
+                      {sortedVersions.map((version, vIndex) => {
+                        const count = day.versions[version] || 0;
+                        if (count === 0) return null;
+                        const heightPercent = (count / total) * 100;
+                        return (
+                          <div
+                            key={version}
+                            className="stacked-segment"
+                            style={{
+                              height: `${heightPercent}%`,
+                              backgroundColor: getVersionColor(version, vIndex),
+                            }}
+                            title={`v${version}: ${count}`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="stacked-bar-label">{day.date.slice(5)}</div>
+                    <div className="stacked-bar-value">{total || ''}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="stacked-legend">
+              {sortedVersions.slice(0, 6).map((version, index) => (
+                <div key={version} className="stacked-legend-item">
+                  <span
+                    className="stacked-legend-dot"
+                    style={{ backgroundColor: getVersionColor(version, index) }}
                   />
+                  <span>v{version}</span>
                 </div>
-                <span className="version-stats">{count} ({percentage}%)</span>
-              </div>
-            );
-          })
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -417,9 +471,9 @@ export function DashboardPage() {
               data={dashboardData.countryBreakdown}
               title="Top Countries"
             />
-            <VersionChart
-              data={dashboardData.versionBreakdown || {}}
-              title="Client Versions"
+            <VersionStackedChart
+              data={dashboardData.versionPerDay || []}
+              title="Version Usage Over Time"
             />
             <SessionsTable data={dashboardData.recentSessions} />
           </div>

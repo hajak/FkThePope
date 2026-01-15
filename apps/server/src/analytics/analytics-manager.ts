@@ -453,6 +453,31 @@ export class AnalyticsManager {
       versionBreakdown[version] = (versionBreakdown[version] || 0) + 1;
     }
 
+    // Version usage per day (last 14 days) for stacked chart
+    const versionPerDay: Array<{ date: string; versions: Record<string, number> }> = [];
+    for (let i = 13; i >= 0; i--) {
+      const date = getDateString(now - i * 24 * 60 * 60 * 1000);
+      versionPerDay.push({ date, versions: {} });
+    }
+    // Count sessions per version per day
+    for (const session of this.completedSessions) {
+      const sessionDate = getDateString(session.startTime);
+      const dayEntry = versionPerDay.find(d => d.date === sessionDate);
+      if (dayEntry) {
+        const version = session.version || 'unknown';
+        dayEntry.versions[version] = (dayEntry.versions[version] || 0) + 1;
+      }
+    }
+    // Add active sessions to today's count
+    const today = getDateString();
+    const todayEntry = versionPerDay.find(d => d.date === today);
+    if (todayEntry) {
+      for (const session of this.activeSessions.values()) {
+        const version = session.version || 'unknown';
+        todayEntry.versions[version] = (todayEntry.versions[version] || 0) + 1;
+      }
+    }
+
     // Aggregate peak hours
     const peakHours: Record<number, number> = {};
     for (const stats of this.dailyStats.values()) {
@@ -539,6 +564,7 @@ export class AnalyticsManager {
       deviceBreakdown,
       countryBreakdown,
       versionBreakdown,
+      versionPerDay,
       peakHours,
       recentSessions: recentSessions.slice(0, 20),
       players: playerStats,

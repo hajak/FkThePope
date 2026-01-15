@@ -4,7 +4,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from '@fkthepope/shar
 type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 // App version - must match server's required version
-export const APP_VERSION = '1.43';
+export const APP_VERSION = '1.44';
 
 // In production, connect to same origin; in dev, use localhost:3001
 const SOCKET_URL = import.meta.env.PROD
@@ -106,9 +106,11 @@ export function getSocket(): GameSocket {
       notifyConnectionChange(false);
     });
 
-    // Handle version mismatch - force reload to get latest version
+    // Handle version mismatch - clear session and force reload to get latest version
     socket.on('version-mismatch', ({ clientVersion, requiredVersion }) => {
       console.log(`[Socket] Version mismatch: client ${clientVersion}, required ${requiredVersion}`);
+      // Clear stored session since old rooms no longer exist after server update
+      clearSession();
       // Show alert and reload
       alert(`Your game is outdated (v${clientVersion}). The page will reload to get the latest version (v${requiredVersion}).`);
       window.location.reload();

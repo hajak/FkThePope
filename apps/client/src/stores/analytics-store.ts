@@ -34,6 +34,7 @@ interface DashboardData {
   deviceBreakdown: { mobile: number; desktop: number };
   countryBreakdown: Record<string, number>;
   versionBreakdown: Record<string, number>;
+  versionPerDay: Array<{ date: string; versions: Record<string, number> }>;
   peakHours: Record<number, number>;
   recentSessions: Array<{
     clientId: string;

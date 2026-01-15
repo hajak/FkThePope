@@ -223,7 +223,10 @@
 /* Layout */
 .admin-layout {
   display: flex;
-  height: calc(100vh - 140px);
+  flex: 1;
+  min-height: 0;
+  height: calc(100vh - 130px);
+  overflow: hidden;
 }
 
 /* Room list sidebar */
@@ -259,6 +262,8 @@
   cursor: pointer;
   transition: all 0.2s;
   border: 2px solid transparent;
+  position: relative;
+  z-index: 1;
 }
 
 .room-item:hover {
