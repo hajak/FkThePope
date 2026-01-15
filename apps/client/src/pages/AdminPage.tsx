@@ -133,7 +133,7 @@ export function AdminPage() {
     return (
       <div className="admin-page">
         <div className="admin-login">
-          <h1>Admin Dashboard</h1>
+          <h1>Live Monitor</h1>
           <p>Real-time game monitoring</p>
           <form onSubmit={handleLogin}>
             <input
@@ -157,15 +157,24 @@ export function AdminPage() {
     <div className="admin-page">
       <header className="admin-header">
         <div className="admin-title">
-          <h1>Admin Dashboard</h1>
+          <h1>Live Monitor</h1>
           <span className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
-            {isConnected ? 'Connected' : 'Disconnected'}
+            {isConnected ? 'Live' : 'Offline'}
           </span>
         </div>
         <div className="admin-stats">
-          <span>Connections: {totalConnections}</span>
-          <span>Uptime: {formatUptime(serverUptime)}</span>
-          <span>Rooms: {rooms.length}</span>
+          <div className="stat-pill">
+            <span className="stat-value">{totalConnections}</span>
+            <span className="stat-label">Connections</span>
+          </div>
+          <div className="stat-pill">
+            <span className="stat-value">{rooms.length}</span>
+            <span className="stat-label">Rooms</span>
+          </div>
+          <div className="stat-pill uptime">
+            <span className="stat-value">{formatUptime(serverUptime)}</span>
+            <span className="stat-label">Uptime</span>
+          </div>
         </div>
         <button className="logout-btn" onClick={logout}>
           Logout

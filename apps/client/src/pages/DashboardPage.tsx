@@ -14,6 +14,16 @@ function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString();
 }
 
+function formatDateTime(timestamp: number): string {
+  const date = new Date(timestamp);
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function PeriodLabel({ period }: { period: TimePeriod }) {
   switch (period) {
     case '7d': return <>Last 7 Days</>;
@@ -110,28 +120,42 @@ function CountryTable({ data, title }: { data: Record<string, number>; title: st
   );
 }
 
-function VersionTable({ data, title }: { data: Record<string, number>; title: string }) {
+function VersionChart({ data, title }: { data: Record<string, number>; title: string }) {
   const sorted = Object.entries(data)
     .sort((a, b) => {
       // Sort by version number (descending), with 'unknown' at the end
       if (a[0] === 'unknown') return 1;
       if (b[0] === 'unknown') return -1;
       return b[0].localeCompare(a[0], undefined, { numeric: true });
-    });
+    })
+    .slice(0, 8); // Show top 8 versions
+
+  const total = sorted.reduce((sum, [, count]) => sum + count, 0);
+  const maxCount = Math.max(...sorted.map(([, count]) => count), 1);
 
   return (
     <div className="chart-container">
       <h3>{title}</h3>
-      <div className="version-table">
+      <div className="version-chart">
         {sorted.length === 0 ? (
           <div className="no-data">No data yet</div>
         ) : (
-          sorted.map(([version, count]) => (
-            <div key={version} className="version-row">
-              <span className="version-name">v{version}</span>
-              <span className="version-count">{count}</span>
-            </div>
-          ))
+          sorted.map(([version, count]) => {
+            const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+            const barWidth = (count / maxCount) * 100;
+            return (
+              <div key={version} className="version-bar-row">
+                <span className="version-label">v{version}</span>
+                <div className="version-bar-container">
+                  <div
+                    className="version-bar-fill"
+                    style={{ width: `${barWidth}%` }}
+                  />
+                </div>
+                <span className="version-stats">{count} ({percentage}%)</span>
+              </div>
+            );
+          })
         )}
       </div>
     </div>
@@ -143,6 +167,14 @@ function SessionsTable({ data }: { data: Array<{ clientId: string; playerName: s
     <div className="chart-container sessions-container">
       <h3>Recent Sessions</h3>
       <div className="sessions-table">
+        <div className="sessions-header">
+          <span></span>
+          <span>Name</span>
+          <span>Started</span>
+          <span>Country</span>
+          <span>Duration</span>
+          <span></span>
+        </div>
         {data.length === 0 ? (
           <div className="no-data">No sessions yet</div>
         ) : (
@@ -150,6 +182,7 @@ function SessionsTable({ data }: { data: Array<{ clientId: string; playerName: s
             <div key={i} className={`session-row ${!session.endTime ? 'active' : ''}`}>
               <span className="session-device">{session.deviceType === 'mobile' ? '📱' : '💻'}</span>
               <span className="session-name">{session.playerName || 'Guest'}</span>
+              <span className="session-time">{formatDateTime(session.startTime)}</span>
               <span className="session-country">{session.country || '?'}</span>
               <span className="session-duration">{formatDuration(session.duration)}</span>
               <span className="session-status">{session.endTime ? '' : '🟢'}</span>
@@ -384,7 +417,7 @@ export function DashboardPage() {
               data={dashboardData.countryBreakdown}
               title="Top Countries"
             />
-            <VersionTable
+            <VersionChart
               data={dashboardData.versionBreakdown || {}}
               title="Client Versions"
             />

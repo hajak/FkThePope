@@ -300,29 +300,46 @@
   padding: 20px;
 }
 
-/* Version table */
-.version-table {
+/* Version chart - horizontal bar chart */
+.version-chart {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
-.version-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
+.version-bar-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 80px;
+  gap: 12px;
+  align-items: center;
 }
 
-.version-name {
-  font-weight: 500;
-  font-family: monospace;
-}
-
-.version-count {
-  color: var(--color-accent);
+.version-label {
   font-weight: 600;
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.version-bar-container {
+  height: 24px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.version-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-primary));
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  min-width: 4px;
+}
+
+.version-stats {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-align: right;
 }
 
 /* Sessions table */
@@ -334,13 +351,27 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 300px;
+  max-height: 350px;
   overflow-y: auto;
+}
+
+.sessions-header {
+  display: grid;
+  grid-template-columns: 30px 1.2fr 1fr 60px 80px 30px;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
 }
 
 .session-row {
   display: grid;
-  grid-template-columns: 30px 1.5fr 60px 80px 30px;
+  grid-template-columns: 30px 1.2fr 1fr 60px 80px 30px;
   gap: 8px;
   padding: 10px 12px;
   background: rgba(0, 0, 0, 0.2);
@@ -356,6 +387,11 @@
 
 .session-device {
   font-size: 16px;
+}
+
+.session-time {
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
 
 .session-id {
