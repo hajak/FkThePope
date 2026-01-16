@@ -137,19 +137,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const localHand = currentState.gameState?.currentHand;
     const serverHand = state.currentHand;
 
-    // Try to merge local cards that server doesn't have yet
+    // Merge local cards that server doesn't have yet (handles network latency)
     if (localHand && serverHand) {
-      const localCards = localHand.currentTrick?.cards?.length ?? 0;
-      const serverCards = serverHand.currentTrick?.cards?.length ?? 0;
-
-      console.log('[setGameState] Merge check:', {
-        localHandNum: localHand.number,
-        serverHandNum: serverHand.number,
-        localCards,
-        serverCards,
-        localTrickComplete: isTrickComplete(localHand.currentTrick),
-      });
-
       const mergedTrick = mergeLocalCards(
         localHand.currentTrick,
         serverHand.currentTrick,
@@ -158,7 +147,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       );
 
       if (mergedTrick) {
-        console.log('[setGameState] Merged local cards, result:', mergedTrick.cards.length, 'cards');
         set({
           gameState: {
             ...state,
@@ -169,8 +157,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
           },
         });
         return;
-      } else {
-        console.log('[setGameState] No merge - using server state with', serverCards, 'cards');
       }
     }
 
@@ -196,13 +182,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   addPlayedCard: (player, card, faceDown) =>
     set((state) => {
-      // Need at least gameState and currentHand to add a card
       if (!state.gameState?.currentHand) {
-        console.log('[addPlayedCard] SKIPPED - no gameState or currentHand', {
-          player,
-          card: `${card.rank}${card.suit[0]}`,
-          hasGameState: !!state.gameState,
-        });
         return state;
       }
 
@@ -210,64 +190,41 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const currentTrick = currentHand.currentTrick;
       const newCard: PlayedCard = { card, playedBy: player, faceDown, playedAt: Date.now() };
 
-      // Determine if we need a fresh trick:
-      // 1. No current trick exists
-      // 2. Current trick is complete (4 cards)
       const needFreshTrick = !currentTrick || isTrickComplete(currentTrick);
 
-      console.log('[addPlayedCard] Processing:', {
-        player,
-        card: `${card.rank}${card.suit[0]}`,
-        needFreshTrick,
-        existingCards: currentTrick?.cards?.length ?? 0,
-      });
-
       if (needFreshTrick) {
-        // Create a fresh trick
-        const newTrickNumber = (currentHand.completedTricks?.length ?? 0) + 1;
-        const freshTrick: TrickState = {
-          cards: [newCard],
-          leadSuit: card.suit,
-          leader: player,
-          currentPlayer: player,
-          trickNumber: newTrickNumber,
-        };
-
-        console.log('[addPlayedCard] Created fresh trick #' + newTrickNumber);
-
+        const trickNumber = (currentHand.completedTricks?.length ?? 0) + 1;
         return {
           gameState: {
             ...state.gameState,
             currentHand: {
               ...currentHand,
-              currentTrick: freshTrick,
+              currentTrick: {
+                cards: [newCard],
+                leadSuit: card.suit,
+                leader: player,
+                currentPlayer: player,
+                trickNumber,
+              },
             },
           },
         };
       }
 
-      // Add to existing trick (if player hasn't already played)
+      // Skip if player already has a card in this trick
       if (currentTrick.cards.some((c) => c.playedBy === player)) {
-        console.log('[addPlayedCard] SKIPPED - player already played in this trick', {
-          player,
-          existingPlayers: currentTrick.cards.map(c => c.playedBy),
-        });
-        return state; // Player already has a card in this trick
+        return state;
       }
-
-      const updatedTrick: TrickState = {
-        ...currentTrick,
-        cards: [...currentTrick.cards, newCard],
-      };
-
-      console.log('[addPlayedCard] Added to existing trick, now has', updatedTrick.cards.length, 'cards');
 
       return {
         gameState: {
           ...state.gameState,
           currentHand: {
             ...currentHand,
-            currentTrick: updatedTrick,
+            currentTrick: {
+              ...currentTrick,
+              cards: [...currentTrick.cards, newCard],
+            },
           },
         },
       };

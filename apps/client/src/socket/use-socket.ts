@@ -134,29 +134,12 @@ export function useSocket() {
     });
 
     socket.on('game-state', ({ gameState }) => {
-      // Debug: Log game-state arrival
-      const currentState = useGameStore.getState();
-      console.log('[game-state] Received:', {
-        serverTrickCards: gameState.currentHand?.currentTrick?.cards?.length ?? 0,
-        localTrickCards: currentState.gameState?.currentHand?.currentTrick?.cards?.length ?? 0,
-        isAnimating: isAnimatingRef.current,
-        isPreserving: currentState.isPreservingTrick,
-      });
-
-      // Use preserving version if we're animating
       if (isAnimatingRef.current) {
         setGameStatePreservingTrick(gameState);
       } else {
         setGameState(gameState);
       }
 
-      // Debug: Log state after update
-      const stateAfter = useGameStore.getState();
-      console.log('[game-state] After update:', {
-        trickCards: stateAfter.gameState?.currentHand?.currentTrick?.cards?.length ?? 0,
-      });
-
-      // Stop video when game ends
       if (gameState.phase === 'game_end') {
         useVideoStore.getState().stopVideo();
       }
@@ -179,42 +162,13 @@ export function useSocket() {
     });
 
     socket.on('card-played', ({ player, card, faceDown }) => {
-      // Debug: Log card-played event and state before processing
-      const stateBefore = useGameStore.getState();
-      const uiStateBefore = useUiStore.getState();
-      console.log('[card-played] Received:', {
-        player,
-        card: `${card.rank}${card.suit[0]}`,
-        faceDown,
-        isPreservingTrick: stateBefore.isPreservingTrick,
-        isAnimatingTrick: uiStateBefore.isAnimatingTrick,
-        hasGameState: !!stateBefore.gameState,
-        hasCurrentHand: !!stateBefore.gameState?.currentHand,
-        currentTrickCards: stateBefore.gameState?.currentHand?.currentTrick?.cards?.length ?? 0,
-        preservedTrickCards: stateBefore.preservedTrick?.cards?.length ?? 0,
-      });
-
-      // ALWAYS clear ALL animation/preservation state when a new card is played.
-      // This is critical for multiple reasons:
-      // 1. Even if the animation timeout hasn't fired yet, we need to show the new card immediately
-      // 2. isAnimatingTrick in UI store controls card positioning - if true, cards are off-screen!
-      // 3. Race condition between animation timeout and bot play could cause old trick to show
+      // Clear all animation/preservation state to ensure cards render on-screen
       clearTrickComplete();
       clearPreservedTrick();
-      setIsAnimatingTrick(false); // Critical: this controls card positioning in TrickPile!
+      setIsAnimatingTrick(false);
       isAnimatingRef.current = false;
 
-      // Add card to trick immediately so it shows before game-state update
-      const addPlayedCard = useGameStore.getState().addPlayedCard;
-      addPlayedCard(player, card, faceDown);
-
-      // Debug: Log state after processing
-      const stateAfter = useGameStore.getState();
-      console.log('[card-played] After add:', {
-        currentTrickCards: stateAfter.gameState?.currentHand?.currentTrick?.cards?.length ?? 0,
-        trickCardsList: stateAfter.gameState?.currentHand?.currentTrick?.cards?.map(c => `${c.playedBy}:${c.card.rank}${c.card.suit[0]}`).join(', ') || 'none',
-        isPreservingTrick: stateAfter.isPreservingTrick,
-      });
+      useGameStore.getState().addPlayedCard(player, card, faceDown);
     });
 
     socket.on('play-rejected', ({ violation }) => {
@@ -223,26 +177,14 @@ export function useSocket() {
     });
 
     socket.on('trick-complete', ({ winner }) => {
-      console.log('[trick-complete] Received, winner:', winner);
-
-      // Preserve the trick so it doesn't get cleared by game-state updates
       preserveTrick();
       isAnimatingRef.current = true;
 
-      const state = useGameStore.getState();
-      console.log('[trick-complete] Preserved trick with', state.preservedTrick?.cards?.length ?? 0, 'cards');
-
-      // Get player name for the toast
-      const gameState = state.gameState;
-      const winnerName = gameState?.players[winner]?.name || winner;
+      const winnerName = useGameStore.getState().gameState?.players[winner]?.name || winner;
       showToast(`${winnerName} wins the trick!`, 'info');
-
-      // Start the trick animation
       startTrickAnimation(winner);
 
-      // Clear preservation after animation completes (matches animation timing +20%)
       setTimeout(() => {
-        console.log('[trick-complete] Animation timeout fired, clearing preservation');
         isAnimatingRef.current = false;
         clearPreservedTrick();
       }, 2640);
