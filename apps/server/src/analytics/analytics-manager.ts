@@ -506,7 +506,8 @@ export class AnalyticsManager {
       ? Math.floor(periodTotalDuration / periodSessionCount / 1000)
       : 0;
 
-    // Recent sessions (last 20)
+    // Recent sessions (last 20) - only show sessions that have a playerName
+    // (filter out connections that never clicked "Play")
     const recentSessions: Array<{
       clientId: string;
       playerName: string | null;
@@ -516,6 +517,7 @@ export class AnalyticsManager {
       country: string | null;
       duration: number;
     }> = [...this.completedSessions]
+      .filter((s) => s.playerName !== null) // Only show players who joined lobby
       .slice(-20)
       .reverse()
       .map((s) => ({
@@ -528,17 +530,19 @@ export class AnalyticsManager {
         duration: Math.floor((s.endTime - s.startTime) / 1000),
       }));
 
-    // Add active sessions
+    // Add active sessions (only those with playerName)
     for (const session of this.activeSessions.values()) {
-      recentSessions.unshift({
-        clientId: session.clientId.slice(0, 12) + '...',
-        playerName: session.playerName,
-        startTime: session.startTime,
-        endTime: null,
-        deviceType: session.deviceType,
-        country: session.country,
-        duration: Math.floor((Date.now() - session.startTime) / 1000),
-      });
+      if (session.playerName !== null) {
+        recentSessions.unshift({
+          clientId: session.clientId.slice(0, 12) + '...',
+          playerName: session.playerName,
+          startTime: session.startTime,
+          endTime: null,
+          deviceType: session.deviceType,
+          country: session.country,
+          duration: Math.floor((Date.now() - session.startTime) / 1000),
+        });
+      }
     }
 
     // Get player stats sorted by last seen (most recent first)
