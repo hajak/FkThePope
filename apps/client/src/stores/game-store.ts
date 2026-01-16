@@ -139,6 +139,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Try to merge local cards that server doesn't have yet
     if (localHand && serverHand) {
+      const localCards = localHand.currentTrick?.cards?.length ?? 0;
+      const serverCards = serverHand.currentTrick?.cards?.length ?? 0;
+
+      console.log('[setGameState] Merge check:', {
+        localHandNum: localHand.number,
+        serverHandNum: serverHand.number,
+        localCards,
+        serverCards,
+        localTrickComplete: isTrickComplete(localHand.currentTrick),
+      });
+
       const mergedTrick = mergeLocalCards(
         localHand.currentTrick,
         serverHand.currentTrick,
@@ -147,6 +158,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       );
 
       if (mergedTrick) {
+        console.log('[setGameState] Merged local cards, result:', mergedTrick.cards.length, 'cards');
         set({
           gameState: {
             ...state,
@@ -157,6 +169,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           },
         });
         return;
+      } else {
+        console.log('[setGameState] No merge - using server state with', serverCards, 'cards');
       }
     }
 
@@ -183,7 +197,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   addPlayedCard: (player, card, faceDown) =>
     set((state) => {
       // Need at least gameState and currentHand to add a card
-      if (!state.gameState?.currentHand) return state;
+      if (!state.gameState?.currentHand) {
+        console.log('[addPlayedCard] SKIPPED - no gameState or currentHand', {
+          player,
+          card: `${card.rank}${card.suit[0]}`,
+          hasGameState: !!state.gameState,
+        });
+        return state;
+      }
 
       const currentHand = state.gameState.currentHand;
       const currentTrick = currentHand.currentTrick;
@@ -193,6 +214,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // 1. No current trick exists
       // 2. Current trick is complete (4 cards)
       const needFreshTrick = !currentTrick || isTrickComplete(currentTrick);
+
+      console.log('[addPlayedCard] Processing:', {
+        player,
+        card: `${card.rank}${card.suit[0]}`,
+        needFreshTrick,
+        existingCards: currentTrick?.cards?.length ?? 0,
+      });
 
       if (needFreshTrick) {
         // Create a fresh trick
@@ -204,6 +232,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           currentPlayer: player,
           trickNumber: newTrickNumber,
         };
+
+        console.log('[addPlayedCard] Created fresh trick #' + newTrickNumber);
 
         return {
           gameState: {
@@ -218,6 +248,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       // Add to existing trick (if player hasn't already played)
       if (currentTrick.cards.some((c) => c.playedBy === player)) {
+        console.log('[addPlayedCard] SKIPPED - player already played in this trick', {
+          player,
+          existingPlayers: currentTrick.cards.map(c => c.playedBy),
+        });
         return state; // Player already has a card in this trick
       }
 
@@ -225,6 +259,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ...currentTrick,
         cards: [...currentTrick.cards, newCard],
       };
+
+      console.log('[addPlayedCard] Added to existing trick, now has', updatedTrick.cards.length, 'cards');
 
       return {
         gameState: {
