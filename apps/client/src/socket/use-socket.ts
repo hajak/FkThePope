@@ -33,6 +33,7 @@ export function useSocket() {
   const setConnectionState = useUiStore((s) => s.setConnectionState);
   const startTrickAnimation = useUiStore((s) => s.startTrickAnimation);
   const clearTrickComplete = useUiStore((s) => s.clearTrickComplete);
+  const setIsAnimatingTrick = useUiStore((s) => s.setIsAnimatingTrick);
   const setHandResult = useUiStore((s) => s.setHandResult);
   const cleanup = useUiStore((s) => s.cleanup);
 
@@ -180,24 +181,27 @@ export function useSocket() {
     socket.on('card-played', ({ player, card, faceDown }) => {
       // Debug: Log card-played event and state before processing
       const stateBefore = useGameStore.getState();
+      const uiStateBefore = useUiStore.getState();
       console.log('[card-played] Received:', {
         player,
         card: `${card.rank}${card.suit[0]}`,
         faceDown,
         isPreservingTrick: stateBefore.isPreservingTrick,
+        isAnimatingTrick: uiStateBefore.isAnimatingTrick,
         hasGameState: !!stateBefore.gameState,
         hasCurrentHand: !!stateBefore.gameState?.currentHand,
         currentTrickCards: stateBefore.gameState?.currentHand?.currentTrick?.cards?.length ?? 0,
         preservedTrickCards: stateBefore.preservedTrick?.cards?.length ?? 0,
       });
 
-      // ALWAYS clear preservation/animation state when a new card is played.
-      // This is critical: even if the animation timeout hasn't fired yet,
-      // we need to show the new card immediately. The race condition between
-      // animation timeout (1800ms) and bot play arrival (~2150ms + network)
-      // could cause the old preserved trick to be shown instead of the new card.
+      // ALWAYS clear ALL animation/preservation state when a new card is played.
+      // This is critical for multiple reasons:
+      // 1. Even if the animation timeout hasn't fired yet, we need to show the new card immediately
+      // 2. isAnimatingTrick in UI store controls card positioning - if true, cards are off-screen!
+      // 3. Race condition between animation timeout and bot play could cause old trick to show
       clearTrickComplete();
       clearPreservedTrick();
+      setIsAnimatingTrick(false); // Critical: this controls card positioning in TrickPile!
       isAnimatingRef.current = false;
 
       // Add card to trick immediately so it shows before game-state update
