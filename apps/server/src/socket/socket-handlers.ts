@@ -32,7 +32,7 @@ import {
 } from '../admin/index.js';
 
 // Required client version - clients must match this exactly
-const REQUIRED_VERSION = '1.52';
+const REQUIRED_VERSION = '1.53';
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
@@ -708,6 +708,7 @@ function handlePlayCard(
     // Wait 2.75s to ensure all clients see the 4th card and animation completes (+10%)
     setTimeout(() => {
       broadcastGameState(io, roomId, gameManager);
+      notifyAdminOfRoomUpdate(roomId); // Update admin with new trick state
       processBotTurns(io, roomId, gameManager);
     }, 2750);
   } else {
@@ -1054,6 +1055,9 @@ async function processBotTurns(
       },
     });
 
+    // Notify admin of bot card play
+    notifyAdminOfRoomUpdate(roomId);
+
     if (result.trickComplete) {
       io.to(roomId).emit('trick-complete', {
         winner: result.trickWinner!,
@@ -1062,6 +1066,9 @@ async function processBotTurns(
 
       // Add delay to show the completed trick (+10%)
       await new Promise((resolve) => setTimeout(resolve, 1650));
+
+      // Notify admin with cleared trick state
+      notifyAdminOfRoomUpdate(roomId);
 
       if (result.handComplete) {
         const serverState = gameManager.getServerState();
