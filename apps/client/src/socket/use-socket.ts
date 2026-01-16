@@ -162,15 +162,14 @@ export function useSocket() {
     });
 
     socket.on('card-played', ({ player, card, faceDown }) => {
-      // Clear trickComplete flag when a new card is played
-      // This makes cards visible again for the new trick
-      const trickComplete = useUiStore.getState().trickComplete;
-      if (trickComplete) {
-        clearTrickComplete();
-        // Also clear preserved trick to prevent stale cards from previous trick
-        clearPreservedTrick();
-        isAnimatingRef.current = false;
-      }
+      // ALWAYS clear preservation/animation state when a new card is played.
+      // This is critical: even if the animation timeout hasn't fired yet,
+      // we need to show the new card immediately. The race condition between
+      // animation timeout (1800ms) and bot play arrival (~2150ms + network)
+      // could cause the old preserved trick to be shown instead of the new card.
+      clearTrickComplete();
+      clearPreservedTrick();
+      isAnimatingRef.current = false;
 
       // Add card to trick immediately so it shows before game-state update
       const addPlayedCard = useGameStore.getState().addPlayedCard;

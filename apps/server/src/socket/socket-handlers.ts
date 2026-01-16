@@ -32,7 +32,7 @@ import {
 } from '../admin/index.js';
 
 // Required client version - clients must match this exactly
-const REQUIRED_VERSION = '1.50';
+const REQUIRED_VERSION = '1.51';
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
@@ -1039,6 +1039,19 @@ async function processBotTurns(
       player: currentPlayer,
       card: move.card,
       faceDown: move.faceDown,
+    });
+
+    // Log bot card play to analytics (use 'bot' as sessionId)
+    AnalyticsManager.getInstance().logSessionEvent(`bot_${currentPlayer}`, 'card_played', {
+      roomId,
+      playerPosition: currentPlayer,
+      details: {
+        card: `${move.card.rank}${move.card.suit.charAt(0).toUpperCase()}`,
+        faceDown: move.faceDown,
+        handNumber: gameManager.getServerState().currentHand?.number,
+        trickNumber: gameManager.getServerState().currentHand?.tricksPlayed,
+        isBot: true,
+      },
     });
 
     if (result.trickComplete) {
