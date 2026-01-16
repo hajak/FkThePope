@@ -1,11 +1,12 @@
 .trick-pile {
   position: relative;
   width: 180px;
-  height: 170px;
+  height: 210px;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 20;
+  overflow: visible;
 }
 
 /* Responsive scaling for smaller screens */
