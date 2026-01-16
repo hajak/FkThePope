@@ -133,7 +133,11 @@ export const useUiStore = create<UiStore>((set, get) => ({
   },
 
   clearTrickComplete: () => {
-    set({ trickComplete: false, trickWinner: null });
+    const { trickAnimationTimeoutId } = get();
+    if (trickAnimationTimeoutId) {
+      clearTimeout(trickAnimationTimeoutId);
+    }
+    set({ trickComplete: false, trickWinner: null, trickAnimationTimeoutId: null });
   },
 
   cleanup: () => {
