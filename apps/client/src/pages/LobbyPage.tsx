@@ -43,6 +43,7 @@ export function LobbyPage() {
   const { joinLobby, createRoom, joinRoom, leaveRoom, startGame, addBot, approvePlayer, rejectPlayer, cancelJoinRequest, sendChatMessage } = useGameActions();
 
   const [chatInput, setChatInput] = useState('');
+  const [chatOpen, setChatOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [pendingRoomJoin, setPendingRoomJoin] = useState<string | null>(getRoomIdFromUrl());
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -337,34 +338,47 @@ export function LobbyPage() {
             </div>
           )}
 
-          {/* Chat section */}
-          <div className="room-chat">
-            <h3>Chat</h3>
-            <div className="chat-messages" ref={chatContainerRef}>
-              {chatMessages.length === 0 ? (
-                <p className="chat-empty">No messages yet. Say hello!</p>
-              ) : (
-                chatMessages.map((msg) => (
-                  <div key={msg.id} className="chat-message">
-                    <span className="chat-sender">{msg.playerName}:</span>
-                    <span className="chat-text">{msg.message}</span>
-                  </div>
-                ))
+          {/* Collapsible chat section */}
+          <div className="room-chat-container">
+            <button
+              className={`chat-toggle-btn ${chatOpen ? 'open' : ''}`}
+              onClick={() => setChatOpen(!chatOpen)}
+            >
+              <span>Chat</span>
+              {chatMessages.length > 0 && !chatOpen && (
+                <span className="chat-badge">{chatMessages.length}</span>
               )}
-            </div>
-            <div className="chat-input-row">
-              <input
-                type="text"
-                placeholder="Type a message..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value.slice(0, 200))}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendChat()}
-                maxLength={200}
-              />
-              <button className="btn-primary" onClick={handleSendChat} disabled={!chatInput.trim()}>
-                Send
-              </button>
-            </div>
+              <span className="chat-toggle-icon">{chatOpen ? '▲' : '▼'}</span>
+            </button>
+            {chatOpen && (
+              <div className="room-chat">
+                <div className="chat-messages" ref={chatContainerRef}>
+                  {chatMessages.length === 0 ? (
+                    <p className="chat-empty">No messages yet. Say hello!</p>
+                  ) : (
+                    chatMessages.map((msg) => (
+                      <div key={msg.id} className="chat-message">
+                        <span className="chat-sender">{msg.playerName}:</span>
+                        <span className="chat-text">{msg.message}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="chat-input-row">
+                  <input
+                    type="text"
+                    placeholder="Type a message..."
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value.slice(0, 200))}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendChat()}
+                    maxLength={200}
+                  />
+                  <button className="btn-primary" onClick={handleSendChat} disabled={!chatInput.trim()}>
+                    Send
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="room-actions">

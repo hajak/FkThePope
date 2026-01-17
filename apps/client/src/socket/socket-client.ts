@@ -4,7 +4,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from '@fkthepope/shar
 type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 // App version - must match server's required version
-export const APP_VERSION = '1.61';
+export const APP_VERSION = '1.62';
 
 // In production, connect to same origin; in dev, use localhost:3001
 const SOCKET_URL = import.meta.env.PROD
