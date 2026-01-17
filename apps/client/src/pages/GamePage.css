@@ -239,20 +239,13 @@
   flex-shrink: 0;
 }
 
-/* Larger center text for cards in hand (20% bigger than default) */
-.hand .card .card-center-rank {
-  font-size: 2.6em;
-}
-
-.hand .card .card-suit-large {
-  font-size: 2.2em;
-}
-
 .play-actions-container {
   min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 100;
 }
 
 .play-actions {
