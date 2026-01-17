@@ -48,6 +48,8 @@
   transform: translateY(-16px);
   box-shadow: 0 12px 24px rgba(233, 69, 96, 0.4);
   outline: 3px solid var(--color-accent);
+  position: relative;
+  z-index: 150;
 }
 
 .card.disabled {
