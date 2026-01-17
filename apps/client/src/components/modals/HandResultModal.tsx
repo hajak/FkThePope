@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { PlayerPosition } from '@fkthepope/shared';
 import { useUiStore } from '../../stores/ui-store';
 import { useGameStore } from '../../stores/game-store';
@@ -5,11 +6,12 @@ import { useGameActions } from '../../socket/use-socket';
 import './HandResultModal.css';
 
 export function HandResultModal() {
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const handResult = useUiStore((s) => s.handResult);
   const setHandResult = useUiStore((s) => s.setHandResult);
   const myPosition = useGameStore((s) => s.myPosition);
   const players = useGameStore((s) => s.gameState?.players);
-  const { continueGame } = useGameActions();
+  const { continueGame, leaveRoom } = useGameActions();
 
   if (!handResult) return null;
 
@@ -38,6 +40,30 @@ export function HandResultModal() {
     setHandResult(null);
   };
 
+  const handleQuit = () => {
+    setHandResult(null);
+    leaveRoom();
+  };
+
+  if (showQuitConfirm) {
+    return (
+      <div className="modal-overlay" onClick={() => setShowQuitConfirm(false)}>
+        <div className="hand-result-modal quit-confirm" onClick={(e) => e.stopPropagation()}>
+          <h2>Quit Game?</h2>
+          <p>Are you sure you want to leave the game?</p>
+          <div className="modal-actions">
+            <button className="btn-secondary" onClick={() => setShowQuitConfirm(false)}>
+              Cancel
+            </button>
+            <button className="btn-danger" onClick={handleQuit}>
+              Quit Game
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="modal-overlay">
       <div className="hand-result-modal" onClick={(e) => e.stopPropagation()}>
@@ -63,9 +89,14 @@ export function HandResultModal() {
           ))}
         </div>
 
-        <button className="btn-primary" onClick={handleContinue}>
-          Continue
-        </button>
+        <div className="modal-actions">
+          <button className="btn-secondary btn-quit" onClick={() => setShowQuitConfirm(true)}>
+            Quit
+          </button>
+          <button className="btn-primary" onClick={handleContinue}>
+            Continue
+          </button>
+        </div>
       </div>
     </div>
   );

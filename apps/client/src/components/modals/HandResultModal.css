@@ -88,6 +88,64 @@
   margin: 1rem 0;
 }
 
+.hand-result-modal .modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.hand-result-modal .btn-primary,
+.hand-result-modal .btn-secondary,
+.hand-result-modal .btn-danger {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
 .hand-result-modal .btn-primary {
-  margin-top: 0.5rem;
+  background: var(--color-accent);
+  color: white;
+  border: none;
+}
+
+.hand-result-modal .btn-primary:hover {
+  background: var(--color-accent-hover);
+}
+
+.hand-result-modal .btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.hand-result-modal .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.hand-result-modal .btn-quit {
+  color: #e74c3c;
+  border-color: rgba(231, 76, 60, 0.4);
+}
+
+.hand-result-modal .btn-quit:hover {
+  background: rgba(231, 76, 60, 0.15);
+}
+
+.hand-result-modal .btn-danger {
+  background: #e74c3c;
+  color: white;
+  border: none;
+}
+
+.hand-result-modal .btn-danger:hover {
+  background: #c0392b;
+}
+
+.hand-result-modal.quit-confirm p {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
 }
