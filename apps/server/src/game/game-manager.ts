@@ -6,6 +6,7 @@ import type {
   Rule,
   RuleContext,
   ClientGameState,
+  GameType,
 } from '@fkthepope/shared';
 import { PLAYER_POSITIONS, getNextPlayer } from '@fkthepope/shared';
 import {
@@ -24,18 +25,20 @@ import {
 import type { GameAction } from '@fkthepope/game-engine';
 import { RulesEngine } from '../rules-engine/index.js';
 import type { Room, RoomPlayer } from '../lobby/lobby-manager.js';
+import type { BaseGameManager } from './base-game-manager.js';
 
 /**
- * Manages a single game instance
+ * Manages a single Whist game instance
  */
-export class GameManager {
+export class GameManager implements BaseGameManager {
+  readonly gameType: GameType = 'whist';
   private state: GameState;
   private rulesEngine: RulesEngine;
   private seed?: number;
   private forceTrump?: Suit;
 
   constructor(
-    private room: Room,
+    public readonly room: Room,
     options: { seed?: number; forceTrump?: Suit } = {}
   ) {
     this.seed = options.seed;

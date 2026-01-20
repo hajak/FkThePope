@@ -1,10 +1,17 @@
 import { useEffect, useCallback, useRef } from 'react';
-import type { Card, PlayerPosition } from '@fkthepope/shared';
+import type { Card, PlayerPosition, GameType, ClientGameState } from '@fkthepope/shared';
 import { getSocket, connectSocket, disconnectSocket, onConnectionChange, storeSession, clearSession } from './socket-client';
 import { useGameStore } from '../stores/game-store';
 import { useLobbyStore } from '../stores/lobby-store';
 import { useUiStore } from '../stores/ui-store';
 import { useVideoStore } from '../stores/video-store';
+
+// Type for Bridge bid
+interface BridgeBid {
+  type: string;
+  level?: number;
+  strain?: string;
+}
 
 /**
  * Main socket hook - sets up all event listeners
@@ -12,12 +19,17 @@ import { useVideoStore } from '../stores/video-store';
 export function useSocket() {
   const setConnected = useGameStore((s) => s.setConnected);
   const setRoom = useGameStore((s) => s.setRoom);
+  const setGameType = useGameStore((s) => s.setGameType);
   const setGameState = useGameStore((s) => s.setGameState);
   const setGameStatePreservingTrick = useGameStore((s) => s.setGameStatePreservingTrick);
+  const setBridgeState = useGameStore((s) => s.setBridgeState);
+  const setSkitgubbeState = useGameStore((s) => s.setSkitgubbeState);
   const setLastViolation = useGameStore((s) => s.setLastViolation);
   const setWaitingFor = useGameStore((s) => s.setWaitingFor);
   const preserveTrick = useGameStore((s) => s.preserveTrick);
   const clearPreservedTrick = useGameStore((s) => s.clearPreservedTrick);
+  const addBridgePlayedCard = useGameStore((s) => s.addBridgePlayedCard);
+  const addSkitgubbePlayedCard = useGameStore((s) => s.addSkitgubbePlayedCard);
   const reset = useGameStore((s) => s.reset);
 
   const setRooms = useLobbyStore((s) => s.setRooms);
@@ -73,9 +85,9 @@ export function useSocket() {
       setRooms(rooms);
     });
 
-    socket.on('room-joined', ({ roomId, roomName, position, players, isHost }) => {
+    socket.on('room-joined', ({ roomId, roomName, gameType, maxPlayers, position, players, isHost }) => {
       setRoom(roomId, position);
-      setCurrentRoom({ id: roomId, name: roomName, players, isHost });
+      setCurrentRoom({ id: roomId, name: roomName, gameType, maxPlayers, players, isHost });
       // Store session for reconnection
       const playerName = useGameStore.getState().playerName;
       storeSession(roomId, position, playerName);
@@ -126,22 +138,50 @@ export function useSocket() {
     });
 
     // Game events
-    socket.on('game-started', ({ gameState }) => {
+    socket.on('game-started', ({ gameState, gameType }) => {
       // Clear any animation state when game starts
       clearTrickComplete();
-      setGameState(gameState);
+      setGameType(gameType);
+
+      if (gameType === 'whist' || !gameType) {
+        setGameState(gameState as ClientGameState);
+        setBridgeState(null);
+        setSkitgubbeState(null);
+      } else if (gameType === 'bridge') {
+        setBridgeState(gameState as any);
+        setGameState(null);
+        setSkitgubbeState(null);
+      } else if (gameType === 'skitgubbe') {
+        setSkitgubbeState(gameState as any);
+        setGameState(null);
+        setBridgeState(null);
+      }
       showToast('Game started!', 'success');
     });
 
-    socket.on('game-state', ({ gameState }) => {
-      if (isAnimatingRef.current) {
-        setGameStatePreservingTrick(gameState);
-      } else {
-        setGameState(gameState);
-      }
+    socket.on('game-state', ({ gameState, gameType }) => {
+      const currentGameType = gameType ?? useGameStore.getState().gameType;
 
-      if (gameState.phase === 'game_end') {
-        useVideoStore.getState().stopVideo();
+      if (currentGameType === 'whist' || !currentGameType) {
+        const typedState = gameState as ClientGameState;
+        if (isAnimatingRef.current) {
+          setGameStatePreservingTrick(typedState);
+        } else {
+          setGameState(typedState);
+        }
+        if (typedState?.phase === 'game_end') {
+          useVideoStore.getState().stopVideo();
+        }
+      } else if (currentGameType === 'bridge') {
+        setBridgeState(gameState as any);
+        if ((gameState as any)?.phase === 'complete') {
+          useVideoStore.getState().stopVideo();
+        }
+      } else if (currentGameType === 'skitgubbe') {
+        setSkitgubbeState(gameState as any);
+        if ((gameState as any)?.phase === 'complete') {
+          useVideoStore.getState().stopVideo();
+        }
       }
     });
 
@@ -168,7 +208,14 @@ export function useSocket() {
       setIsAnimatingTrick(false);
       isAnimatingRef.current = false;
 
-      useGameStore.getState().addPlayedCard(player, card, faceDown);
+      const currentGameType = useGameStore.getState().gameType;
+      if (currentGameType === 'bridge') {
+        addBridgePlayedCard(player, card);
+      } else if (currentGameType === 'skitgubbe') {
+        addSkitgubbePlayedCard(player, card);
+      } else {
+        useGameStore.getState().addPlayedCard(player, card, faceDown);
+      }
     });
 
     socket.on('play-rejected', ({ violation }) => {
@@ -192,6 +239,112 @@ export function useSocket() {
 
     socket.on('hand-complete', ({ winner, tricks }) => {
       setHandResult({ winner, tricks });
+    });
+
+    // Bridge-specific events
+    socket.on('bridge-bid-made', ({ player, bidType, level, strain }) => {
+      const bid: BridgeBid = { type: bidType };
+      if (level !== undefined) bid.level = level;
+      if (strain !== undefined) bid.strain = strain;
+
+      const bridgeState = useGameStore.getState().bridgeState;
+      if (bridgeState) {
+        setBridgeState({
+          ...bridgeState,
+          biddingHistory: [...bridgeState.biddingHistory, { player, bid }],
+        });
+      }
+
+      const playerName = bridgeState?.players[player]?.name || player;
+      if (bidType === 'pass') {
+        showToast(`${playerName} passed`, 'info');
+      } else if (bidType === 'double') {
+        showToast(`${playerName} doubled!`, 'info');
+      } else if (bidType === 'redouble') {
+        showToast(`${playerName} redoubled!`, 'info');
+      } else if (level && strain) {
+        showToast(`${playerName} bid ${level}${strain}`, 'info');
+      }
+    });
+
+    socket.on('bridge-bidding-complete', ({ contract, passed }) => {
+      if (passed) {
+        showToast('All passed - no contract', 'info');
+      } else if (contract) {
+        const c = contract as any;
+        showToast(`Contract: ${c.level}${c.strain} by ${c.declarer}`, 'success');
+      }
+      const bridgeState = useGameStore.getState().bridgeState;
+      if (bridgeState) {
+        setBridgeState({
+          ...bridgeState,
+          contract: contract as any,
+          phase: passed ? 'complete' : 'playing',
+        });
+      }
+    });
+
+    socket.on('bridge-dummy-revealed', ({ dummyPosition, dummyHand }) => {
+      const bridgeState = useGameStore.getState().bridgeState;
+      if (bridgeState) {
+        setBridgeState({
+          ...bridgeState,
+          dummyHand,
+        });
+      }
+      showToast(`Dummy (${dummyPosition}) hand revealed`, 'info');
+    });
+
+    // Skitgubbe-specific events
+    socket.on('skitgubbe-phase-change', ({ phase }) => {
+      const skitgubbeState = useGameStore.getState().skitgubbeState;
+      if (skitgubbeState) {
+        setSkitgubbeState({
+          ...skitgubbeState,
+          phase,
+        });
+      }
+      if (phase === 'phase2') {
+        showToast('Phase 2: Get rid of your cards!', 'info');
+      }
+    });
+
+    socket.on('skitgubbe-pickup', ({ player, cardsPickedUp }) => {
+      const skitgubbeState = useGameStore.getState().skitgubbeState;
+      const playerName = skitgubbeState?.players[player]?.name || player;
+      showToast(`${playerName} picked up ${cardsPickedUp} cards`, 'info');
+    });
+
+    socket.on('skitgubbe-player-out', ({ player }) => {
+      const skitgubbeState = useGameStore.getState().skitgubbeState;
+      const playerName = skitgubbeState?.players[player]?.name || player;
+      showToast(`${playerName} is out!`, 'success');
+      if (skitgubbeState) {
+        setSkitgubbeState({
+          ...skitgubbeState,
+          playersOut: [...skitgubbeState.playersOut, player],
+        });
+      }
+    });
+
+    // Game ended (all games)
+    socket.on('game-ended', ({ loser, winner }) => {
+      const gameType = useGameStore.getState().gameType;
+      if (gameType === 'skitgubbe' && loser) {
+        const skitgubbeState = useGameStore.getState().skitgubbeState;
+        const loserName = skitgubbeState?.players[loser]?.name || loser;
+        showToast(`${loserName} is the Skitgubbe!`, 'info');
+        if (skitgubbeState) {
+          setSkitgubbeState({
+            ...skitgubbeState,
+            phase: 'complete',
+            loser,
+          });
+        }
+      } else if (winner) {
+        showToast(`Game over! Winner: ${winner}`, 'success');
+      }
+      useVideoStore.getState().stopVideo();
     });
 
     // WebRTC signaling events
@@ -254,6 +407,13 @@ export function useSocket() {
       socket.off('play-rejected');
       socket.off('trick-complete');
       socket.off('hand-complete');
+      socket.off('bridge-bid-made');
+      socket.off('bridge-bidding-complete');
+      socket.off('bridge-dummy-revealed');
+      socket.off('skitgubbe-phase-change');
+      socket.off('skitgubbe-pickup');
+      socket.off('skitgubbe-player-out');
+      socket.off('game-ended');
       socket.off('webrtc-offer');
       socket.off('webrtc-answer');
       socket.off('webrtc-ice-candidate');
@@ -284,8 +444,8 @@ export function useGameActions() {
     storeSession(null, null, playerName);
   }, []);
 
-  const createRoom = useCallback((roomName: string) => {
-    getSocket().emit('create-room', { roomName });
+  const createRoom = useCallback((roomName: string, gameType: GameType = 'whist') => {
+    getSocket().emit('create-room', { roomName, gameType });
   }, []);
 
   const joinRoom = useCallback((roomId: string, position?: PlayerPosition) => {
@@ -350,6 +510,48 @@ export function useGameActions() {
     }
   }, []);
 
+  // Bridge-specific actions
+  const bridgeBid = useCallback((bidType: 'bid' | 'pass' | 'double' | 'redouble', level?: number, strain?: string) => {
+    const now = Date.now();
+    if (now - lastPlayTimeRef.current < DEBOUNCE_MS) {
+      return;
+    }
+    lastPlayTimeRef.current = now;
+
+    getSocket().emit('bridge-bid', { bidType, level, strain });
+  }, []);
+
+  const bridgePlay = useCallback((card: Card, fromDummy?: boolean) => {
+    const now = Date.now();
+    if (now - lastPlayTimeRef.current < DEBOUNCE_MS) {
+      return;
+    }
+    lastPlayTimeRef.current = now;
+
+    getSocket().emit('bridge-play', { card, fromDummy });
+  }, []);
+
+  // Skitgubbe-specific actions
+  const skitgubbePlay = useCallback((card: Card) => {
+    const now = Date.now();
+    if (now - lastPlayTimeRef.current < DEBOUNCE_MS) {
+      return;
+    }
+    lastPlayTimeRef.current = now;
+
+    getSocket().emit('skitgubbe-play', { card });
+  }, []);
+
+  const skitgubbePickup = useCallback(() => {
+    const now = Date.now();
+    if (now - lastPlayTimeRef.current < DEBOUNCE_MS) {
+      return;
+    }
+    lastPlayTimeRef.current = now;
+
+    getSocket().emit('skitgubbe-pickup');
+  }, []);
+
   return {
     joinLobby,
     createRoom,
@@ -366,5 +568,9 @@ export function useGameActions() {
     rejectPlayer,
     cancelJoinRequest,
     sendChatMessage,
+    bridgeBid,
+    bridgePlay,
+    skitgubbePlay,
+    skitgubbePickup,
   };
 }

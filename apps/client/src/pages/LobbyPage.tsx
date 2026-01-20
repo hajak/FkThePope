@@ -3,7 +3,8 @@ import { useGameStore } from '../stores/game-store';
 import { useLobbyStore } from '../stores/lobby-store';
 import { useGameActions } from '../socket/use-socket';
 import { getStoredSession, clearSession, getSocket, APP_VERSION } from '../socket/socket-client';
-import type { PlayerPosition } from '@fkthepope/shared';
+import type { PlayerPosition, GameType } from '@fkthepope/shared';
+import { GAME_CONFIGS } from '@fkthepope/shared';
 import './LobbyPage.css';
 
 // Get room ID from URL if present
@@ -28,6 +29,7 @@ export function LobbyPage() {
   const [playerName, setPlayerName] = useState('');
   const initialRoomName = useMemo(() => generateRoomName(), []);
   const [roomName, setRoomName] = useState(initialRoomName);
+  const [selectedGame, setSelectedGame] = useState<GameType>('whist');
   const [hasJoinedLobby, setHasJoinedLobby] = useState(false);
 
   const isConnected = useGameStore((s) => s.isConnected);
@@ -139,7 +141,7 @@ export function LobbyPage() {
 
   const handleCreateRoom = () => {
     if (roomName.trim()) {
-      createRoom(roomName);
+      createRoom(roomName, selectedGame);
       setRoomName(generateRoomName());
     }
   };
@@ -252,17 +254,26 @@ export function LobbyPage() {
 
   // Room waiting screen
   if (currentRoom) {
-    const positions: PlayerPosition[] = ['north', 'east', 'south', 'west'];
+    const allPositions: PlayerPosition[] = ['north', 'east', 'south', 'west'];
+    const positions = allPositions.slice(0, currentRoom.maxPlayers);
     const filledPositions = currentRoom.players.filter(Boolean).length;
+    const gameConfig = GAME_CONFIGS[currentRoom.gameType];
 
     return (
       <div className="lobby-page">
         <div className="version-badge">v{APP_VERSION}</div>
         <div className="lobby-card room-card">
           <h2>{currentRoom.name}</h2>
-          <p className="room-subtitle">Invite friends or add bots to fill all 4 seats</p>
+          <div className="room-game-info">
+            <span className={`game-badge game-${currentRoom.gameType}`}>{gameConfig.name}</span>
+          </div>
+          <p className="room-subtitle">
+            {gameConfig.minPlayers === gameConfig.maxPlayers
+              ? `Invite friends or add bots to fill all ${currentRoom.maxPlayers} seats`
+              : `Need ${gameConfig.minPlayers}-${gameConfig.maxPlayers} players to start`}
+          </p>
 
-          <div className="room-players">
+          <div className={`room-players players-${currentRoom.maxPlayers}`}>
             {positions.map((pos, idx) => {
               const player = currentRoom.players[idx];
               const seatLabel = `Seat ${idx + 1}`;
@@ -389,13 +400,13 @@ export function LobbyPage() {
               <button
                 className="btn-primary"
                 onClick={handleStartGame}
-                disabled={filledPositions < 4}
+                disabled={filledPositions < gameConfig.minPlayers}
               >
-                {filledPositions < 4 ? `Need ${4 - filledPositions} more players` : 'Start Game'}
+                {filledPositions < gameConfig.minPlayers ? `Need ${gameConfig.minPlayers - filledPositions} more players` : 'Start Game'}
               </button>
             ) : (
               <span className="waiting-host">
-                {filledPositions < 4 ? `Waiting for ${4 - filledPositions} more players` : 'Waiting for host to start'}
+                {filledPositions < gameConfig.minPlayers ? `Waiting for ${gameConfig.minPlayers - filledPositions} more players` : 'Waiting for host to start'}
               </span>
             )}
           </div>
@@ -412,19 +423,37 @@ export function LobbyPage() {
         <h2>Welcome, {storedName}!</h2>
 
         <div className="create-room">
-          <input
-            type="text"
-            placeholder="Room name"
-            value={roomName}
-            onChange={(e) => setRoomName(e.target.value)}
-          />
-          <button
-            className="btn-primary"
-            onClick={handleCreateRoom}
-            disabled={!roomName.trim()}
-          >
-            Create Room
-          </button>
+          <div className="game-selector">
+            {(['whist', 'bridge', 'skitgubbe'] as GameType[]).map((gameType) => {
+              const config = GAME_CONFIGS[gameType];
+              return (
+                <button
+                  key={gameType}
+                  className={`game-option ${selectedGame === gameType ? 'selected' : ''}`}
+                  onClick={() => setSelectedGame(gameType)}
+                  title={config.description}
+                >
+                  <span className="game-name">{config.name}</span>
+                  <span className="game-players">{config.minPlayers === config.maxPlayers ? config.maxPlayers : `${config.minPlayers}-${config.maxPlayers}`} players</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="room-name-input">
+            <input
+              type="text"
+              placeholder="Room name"
+              value={roomName}
+              onChange={(e) => setRoomName(e.target.value)}
+            />
+            <button
+              className="btn-primary"
+              onClick={handleCreateRoom}
+              disabled={!roomName.trim()}
+            >
+              Create Room
+            </button>
+          </div>
         </div>
 
         <div className="room-list">
@@ -432,23 +461,27 @@ export function LobbyPage() {
           {rooms.length === 0 ? (
             <p className="no-rooms">No rooms available. Create one!</p>
           ) : (
-            rooms.map((room) => (
-              <div key={room.id} className="room-item">
-                <div className="room-info">
-                  <span className="room-name">{room.name}</span>
-                  <span className="room-players-count">
-                    {room.playerCount}/4 players
-                  </span>
+            rooms.map((room) => {
+              const gameConfig = GAME_CONFIGS[room.gameType];
+              return (
+                <div key={room.id} className="room-item">
+                  <div className="room-info">
+                    <span className="room-name">{room.name}</span>
+                    <span className={`game-badge game-${room.gameType}`}>{gameConfig.name}</span>
+                    <span className="room-players-count">
+                      {room.playerCount}/{room.maxPlayers} players
+                    </span>
+                  </div>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => handleJoinRoom(room.id)}
+                    disabled={room.playerCount >= room.maxPlayers || room.status === 'playing'}
+                  >
+                    {room.status === 'playing' ? 'In Progress' : 'Join'}
+                  </button>
                 </div>
-                <button
-                  className="btn-secondary"
-                  onClick={() => handleJoinRoom(room.id)}
-                  disabled={room.playerCount >= 4 || room.status === 'playing'}
-                >
-                  {room.status === 'playing' ? 'In Progress' : 'Join'}
-                </button>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

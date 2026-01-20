@@ -2,6 +2,7 @@
 export * from './types/card.js';
 export * from './types/player.js';
 export * from './types/game.js';
+export * from './types/game-types.js';
 export * from './types/rules.js';
 export * from './types/events.js';
 

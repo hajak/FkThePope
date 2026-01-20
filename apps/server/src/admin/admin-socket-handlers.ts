@@ -3,6 +3,7 @@ import type { PlayerPosition, Card, Suit } from '@fkthepope/shared';
 import { validateAdminToken } from '../analytics/index.js';
 import { LobbyManager, type Room, type RoomPlayer } from '../lobby/lobby-manager.js';
 import { GameManager } from '../game/game-manager.js';
+import type { BaseGameManager } from '../game/base-game-manager.js';
 import type {
   AdminServerToClientEvents,
   AdminClientToServerEvents,
@@ -14,7 +15,7 @@ import type {
 
 // References to main game data (set during initialization)
 let lobbyManagerRef: LobbyManager;
-let activeGamesRef: Map<string, GameManager>;
+let activeGamesRef: Map<string, BaseGameManager>;
 let ioRef: Server;
 
 // Track connected admin sockets
@@ -46,7 +47,7 @@ export function removeClientMetadata(socketId: string): void {
 export function setupAdminSocketHandlers(
   io: Server,
   lobbyManager: LobbyManager,
-  activeGames: Map<string, GameManager>
+  activeGames: Map<string, BaseGameManager>
 ): void {
   lobbyManagerRef = lobbyManager;
   activeGamesRef = activeGames;
@@ -112,6 +113,25 @@ function buildFullAdminState(): AdminDashboardState {
   };
 }
 
+// Type for Whist admin state (what GameManager.getAdminState returns)
+interface WhistAdminState {
+  phase: string;
+  players: Record<PlayerPosition, { hand: Card[]; tricksWon: number; name: string; isBot: boolean } | null>;
+  currentTrick: {
+    cards: Array<{ card: Card; playedBy: PlayerPosition; faceDown: boolean }>;
+    leadSuit: Suit | null;
+    trickNumber: number;
+  } | null;
+  completedTricks: Array<{
+    cards: Array<{ card: Card; playedBy: PlayerPosition; faceDown: boolean }>;
+    winner: PlayerPosition;
+  }>;
+  trumpSuit: Suit | null;
+  currentPlayer: PlayerPosition | null;
+  scores: Record<PlayerPosition, number>;
+  handNumber: number;
+}
+
 /**
  * Build admin info for a single room
  */
@@ -120,7 +140,10 @@ function buildAdminGameInfo(roomId: string): AdminGameInfo | null {
   if (!room) return null;
 
   const game = activeGamesRef.get(roomId);
-  const adminState = game?.getAdminState();
+  // Only Whist games have full admin support for now
+  const adminState = (game instanceof GameManager)
+    ? game.getAdminState() as WhistAdminState
+    : null;
 
   // Build player info for each position
   const players: Record<PlayerPosition, AdminPlayerInfo | null> = {
@@ -159,7 +182,7 @@ function buildAdminGameInfo(roomId: string): AdminGameInfo | null {
   }
 
   // Build completed tricks
-  const completedTricks: AdminTrickInfo[] = adminState?.completedTricks?.map(t => ({
+  const completedTricks: AdminTrickInfo[] = adminState?.completedTricks?.map((t: WhistAdminState['completedTricks'][number]) => ({
     cards: t.cards,
     leadSuit: null, // Could derive from first card if needed
     trickNumber: 0, // Could track if needed

@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { PLAYER_POSITIONS, SUITS, RANKS } from '@fkthepope/shared';
+import { PLAYER_POSITIONS, SUITS, RANKS, GAME_TYPES } from '@fkthepope/shared';
+
+// Game type schema
+export const GameTypeSchema = z.enum(['whist', 'bridge', 'skitgubbe']);
 
 // Card schema
 export const CardSchema = z.object({
@@ -100,6 +103,7 @@ export const JoinLobbySchema = z.object({
 
 export const CreateRoomSchema = z.object({
   roomName: z.string().min(1).max(50).trim(),
+  gameType: GameTypeSchema.optional().default('whist'),
 });
 
 export const JoinRoomSchema = z.object({
@@ -145,6 +149,23 @@ export const ApprovePlayerSchema = z.object({
 
 export const RejectPlayerSchema = z.object({
   socketId: z.string().min(1),
+});
+
+// Skitgubbe event schemas
+export const SkitgubbePlaySchema = z.object({
+  card: CardSchema,
+});
+
+// Bridge event schemas
+export const BridgeBidSchema = z.object({
+  bidType: z.enum(['bid', 'pass', 'double', 'redouble']),
+  level: z.number().min(1).max(7).optional(),
+  strain: z.enum(['clubs', 'diamonds', 'hearts', 'spades', 'notrump']).optional(),
+});
+
+export const BridgePlaySchema = z.object({
+  card: CardSchema,
+  fromDummy: z.boolean().optional(),
 });
 
 // Validation helper

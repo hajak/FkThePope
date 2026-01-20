@@ -1063,3 +1063,189 @@
     transform: scale(0.95);
   }
 }
+
+/* Game selector */
+.game-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.game-option {
+  flex: 1;
+  padding: 16px 12px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+
+.game-option:hover:not(:disabled) {
+  border-color: rgba(76, 175, 80, 0.4);
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.game-option.selected {
+  border-color: var(--color-accent);
+  background: rgba(76, 175, 80, 0.15);
+}
+
+.game-option.coming-soon {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.game-option .game-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.game-option .game-players {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.coming-soon-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 6px;
+  border-radius: 8px;
+  text-transform: uppercase;
+}
+
+.room-name-input {
+  display: flex;
+  gap: 12px;
+}
+
+.room-name-input input {
+  flex: 1;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text);
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.room-name-input input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.room-name-input .btn-primary {
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+/* Game badge */
+.game-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 6px;
+  margin-left: 8px;
+}
+
+.game-badge.game-whist {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: white;
+}
+
+.game-badge.game-bridge {
+  background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+  color: white;
+}
+
+.game-badge.game-skitgubbe {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  color: white;
+}
+
+/* Room game info */
+.room-game-info {
+  margin-bottom: 8px;
+}
+
+.room-game-info .game-badge {
+  margin: 0;
+  font-size: 11px;
+  padding: 5px 12px;
+}
+
+/* Room players for variable player counts */
+.room-players.players-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.room-players.players-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.room-players.players-4 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Room list game badge adjustment */
+.room-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.room-info .room-name {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+/* Mobile responsive for game selector */
+@media (max-width: 600px) {
+  .game-selector {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .game-option {
+    padding: 14px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+  }
+
+  .game-option .game-name {
+    font-size: 14px;
+  }
+
+  .game-option .game-players {
+    font-size: 12px;
+  }
+
+  .coming-soon-badge {
+    position: static;
+  }
+
+  .room-name-input {
+    flex-direction: column;
+  }
+}

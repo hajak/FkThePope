@@ -1,5 +1,5 @@
-import type { PlayerPosition, RoomInfo, PendingPlayer } from '@fkthepope/shared';
-import { PLAYER_POSITIONS, getRandomBotName } from '@fkthepope/shared';
+import type { PlayerPosition, RoomInfo, PendingPlayer, GameType, GameConfig } from '@fkthepope/shared';
+import { PLAYER_POSITIONS, getRandomBotName, GAME_CONFIGS } from '@fkthepope/shared';
 import { nanoid, playerId } from '@fkthepope/game-engine';
 
 /**
@@ -22,6 +22,7 @@ export interface RoomPlayer {
 export interface Room {
   id: string;
   name: string;
+  gameType: GameType;
   hostId: string;
   players: Map<PlayerPosition, RoomPlayer>;
   pendingPlayers: Map<string, PendingPlayer>; // socketId -> PendingPlayer
@@ -39,13 +40,14 @@ export class LobbyManager {
   /**
    * Create a new room
    */
-  createRoom(name: string, hostSocketId: string, hostName: string): Room {
+  createRoom(name: string, hostSocketId: string, hostName: string, gameType: GameType = 'whist'): Room {
     const roomId = nanoid(8);
     const hostPlayerId = playerId();
 
     const room: Room = {
       id: roomId,
       name,
+      gameType,
       hostId: hostSocketId,
       players: new Map(),
       pendingPlayers: new Map(),
@@ -457,7 +459,17 @@ export class LobbyManager {
   canStartGame(roomId: string): boolean {
     const room = this.rooms.get(roomId);
     if (!room) return false;
-    return room.players.size === 4;
+    const config = GAME_CONFIGS[room.gameType];
+    return room.players.size >= config.minPlayers && room.players.size <= config.maxPlayers;
+  }
+
+  /**
+   * Get the game config for a room
+   */
+  getGameConfig(roomId: string): GameConfig | undefined {
+    const room = this.rooms.get(roomId);
+    if (!room) return undefined;
+    return GAME_CONFIGS[room.gameType];
   }
 
   /**
@@ -490,17 +502,21 @@ export class LobbyManager {
    * Get all rooms as public info
    */
   getRoomList(): RoomInfo[] {
-    return Array.from(this.rooms.values()).map((room) => ({
-      id: room.id,
-      name: room.name,
-      playerCount: room.players.size,
-      maxPlayers: 4,
-      status: room.status,
-      players: Array.from(room.players.values()).map((p) => ({
-        name: p.name,
-        position: p.position,
-      })),
-    }));
+    return Array.from(this.rooms.values()).map((room) => {
+      const config = GAME_CONFIGS[room.gameType];
+      return {
+        id: room.id,
+        name: room.name,
+        gameType: room.gameType,
+        playerCount: room.players.size,
+        maxPlayers: config.maxPlayers,
+        status: room.status,
+        players: Array.from(room.players.values()).map((p) => ({
+          name: p.name,
+          position: p.position,
+        })),
+      };
+    });
   }
 
   /**

@@ -1,17 +1,21 @@
 import { create } from 'zustand';
-import type { RoomInfo, PlayerView, PendingPlayer, ChatMessage } from '@fkthepope/shared';
+import type { RoomInfo, PlayerView, PendingPlayer, ChatMessage, GameType } from '@fkthepope/shared';
+
+interface CurrentRoom {
+  id: string;
+  name: string;
+  gameType: GameType;
+  maxPlayers: number;
+  players: Array<PlayerView | null>;
+  isHost: boolean;
+}
 
 interface LobbyStore {
   // Room list
   rooms: RoomInfo[];
 
   // Current room
-  currentRoom: {
-    id: string;
-    name: string;
-    players: Array<PlayerView | null>;
-    isHost: boolean;
-  } | null;
+  currentRoom: CurrentRoom | null;
 
   // Pending join state (for players waiting for approval)
   pendingJoin: {
@@ -27,7 +31,7 @@ interface LobbyStore {
 
   // Actions
   setRooms: (rooms: RoomInfo[]) => void;
-  setCurrentRoom: (room: { id: string; name: string; players: Array<PlayerView | null>; isHost: boolean } | null) => void;
+  setCurrentRoom: (room: CurrentRoom | null) => void;
   updateRoomPlayers: (players: Array<PlayerView | null>) => void;
   setPendingJoin: (pending: { roomId: string; roomName: string } | null) => void;
   setPendingPlayers: (pending: PendingPlayer[]) => void;

@@ -1,5 +1,6 @@
 import type { Card, PlayerPosition } from './card.js';
 import type { ClientGameState, GameAction } from './game.js';
+import type { GameType } from './game-types.js';
 import type { PlayerView } from './player.js';
 import type { Rule, RuleViolation } from './rules.js';
 
@@ -9,8 +10,9 @@ import type { Rule, RuleViolation } from './rules.js';
 export interface RoomInfo {
   id: string;
   name: string;
+  gameType: GameType;
   playerCount: number;
-  maxPlayers: 4;
+  maxPlayers: number;
   status: 'waiting' | 'playing';
   players: Array<{ name: string; position: PlayerPosition }>;
 }
@@ -55,7 +57,7 @@ export interface ChatMessage {
 export type ClientToServerEvents = {
   // Lobby events
   'join-lobby': (data: { playerName: string }) => void;
-  'create-room': (data: { roomName: string }) => void;
+  'create-room': (data: { roomName: string; gameType?: GameType }) => void;
   'join-room': (data: { roomId: string; position?: PlayerPosition }) => void;
   'rejoin-room': (data: { roomId: string; position: PlayerPosition; playerName: string }) => void;
   'leave-room': () => void;
@@ -65,9 +67,17 @@ export type ClientToServerEvents = {
   'approve-player': (data: { socketId: string }) => void;
   'reject-player': (data: { socketId: string }) => void;
 
-  // Game events
+  // Game events (Whist)
   'play-card': (data: { card: Card; faceDown: boolean }) => void;
   'continue-game': () => void;
+
+  // Skitgubbe events
+  'skitgubbe-play': (data: { card: Card }) => void;
+  'skitgubbe-pickup': () => void;
+
+  // Bridge events
+  'bridge-bid': (data: { bidType: 'bid' | 'pass' | 'double' | 'redouble'; level?: number; strain?: string }) => void;
+  'bridge-play': (data: { card: Card; fromDummy?: boolean }) => void;
 
   // Dev/bot events
   'add-bot': (data: { position: PlayerPosition }) => void;
@@ -106,7 +116,7 @@ export type ServerToClientEvents = {
 
   // Lobby events
   'lobby-state': (data: { rooms: RoomInfo[] }) => void;
-  'room-joined': (data: { roomId: string; roomName: string; position: PlayerPosition; players: Array<PlayerView | null>; isHost: boolean }) => void;
+  'room-joined': (data: { roomId: string; roomName: string; gameType: GameType; maxPlayers: number; position: PlayerPosition; players: Array<PlayerView | null>; isHost: boolean }) => void;
   'room-updated': (data: { players: Array<PlayerView | null> }) => void;
   'room-left': () => void;
 
@@ -117,10 +127,20 @@ export type ServerToClientEvents = {
   'join-approved': (data: { position: PlayerPosition }) => void;
   'join-rejected': (data: { message: string }) => void;
 
-  // Game lifecycle events
-  'game-started': (data: { gameState: ClientGameState }) => void;
-  'game-state': (data: { gameState: ClientGameState }) => void;
-  'game-ended': (data: { finalScores: Record<PlayerPosition, number>; winner: PlayerPosition }) => void;
+  // Game lifecycle events (generic - gameState can be any game's client state)
+  'game-started': (data: { gameState: unknown; gameType: GameType }) => void;
+  'game-state': (data: { gameState: unknown; gameType: GameType }) => void;
+  'game-ended': (data: { finalScores: Record<PlayerPosition, number>; winner?: PlayerPosition; loser?: PlayerPosition }) => void;
+
+  // Skitgubbe-specific events
+  'skitgubbe-phase-change': (data: { phase: 'phase1' | 'phase2' }) => void;
+  'skitgubbe-pickup': (data: { player: PlayerPosition; cardsPickedUp: number }) => void;
+  'skitgubbe-player-out': (data: { player: PlayerPosition }) => void;
+
+  // Bridge-specific events
+  'bridge-bid-made': (data: { player: PlayerPosition; bidType: string; level?: number; strain?: string }) => void;
+  'bridge-bidding-complete': (data: { contract: unknown | null; passed: boolean }) => void;
+  'bridge-dummy-revealed': (data: { dummyPosition: PlayerPosition; dummyHand: Card[] }) => void;
 
   // Turn events
   'your-turn': (data: { legalMoves: Array<{ card: Card; canPlayFaceDown: boolean }> }) => void;

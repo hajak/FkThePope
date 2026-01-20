@@ -7,7 +7,40 @@ import type {
   RuleViolation,
   PlayedCard,
   TrickState,
+  GameType,
 } from '@fkthepope/shared';
+
+// Bridge-specific client state
+interface BridgeClientState {
+  phase: 'bidding' | 'playing' | 'complete';
+  hands: Record<PlayerPosition, Card[]>;
+  myHand: Card[];
+  biddingHistory: Array<{ player: PlayerPosition; bid: { type: string; level?: number; strain?: string } }>;
+  contract: { level: number; strain: string; declarer: PlayerPosition; dummy: PlayerPosition; doubled: boolean; redoubled: boolean } | null;
+  dummyHand: Card[] | null;
+  currentTrick: { cards: Array<{ card: Card; playedBy: PlayerPosition }>; leader: PlayerPosition } | null;
+  tricksWon: { ns: number; ew: number };
+  currentPlayer: PlayerPosition | null;
+  players: Record<PlayerPosition, { name: string; isBot: boolean; isConnected: boolean } | null>;
+  scores: { ns: number; ew: number };
+}
+
+// Skitgubbe-specific client state
+interface SkitgubbeClientState {
+  phase: 'phase1' | 'phase2' | 'complete';
+  myHand: Card[];
+  trumpSuit: string;
+  trumpCard: Card | null;
+  stockCount: number;
+  currentTrick: { cards: Array<{ card: Card; playedBy: PlayerPosition }>; leader: PlayerPosition } | null;
+  pile: Card[];
+  pileCount: number;
+  currentPlayer: PlayerPosition | null;
+  playersOut: PlayerPosition[];
+  loser: PlayerPosition | null;
+  players: Record<PlayerPosition, { name: string; isBot: boolean; isConnected: boolean; cardCount: number } | null>;
+  handCounts: Record<PlayerPosition, number>;
+}
 
 interface GameStore {
   // Connection state
@@ -19,8 +52,17 @@ interface GameStore {
   roomId: string | null;
   myPosition: PlayerPosition | null;
 
-  // Game state
+  // Game type
+  gameType: GameType | null;
+
+  // Game state (type varies by game)
   gameState: ClientGameState | null;
+
+  // Bridge-specific state
+  bridgeState: BridgeClientState | null;
+
+  // Skitgubbe-specific state
+  skitgubbeState: SkitgubbeClientState | null;
 
   // Preserved trick state for animation (prevents race condition)
   preservedTrick: TrickState | null;
@@ -35,12 +77,17 @@ interface GameStore {
   setConnected: (connected: boolean, playerId?: string) => void;
   setPlayerName: (name: string) => void;
   setRoom: (roomId: string | null, position: PlayerPosition | null) => void;
+  setGameType: (gameType: GameType | null) => void;
   setGameState: (state: ClientGameState | null) => void;
   setGameStatePreservingTrick: (state: ClientGameState | null) => void;
+  setBridgeState: (state: BridgeClientState | null) => void;
+  setSkitgubbeState: (state: SkitgubbeClientState | null) => void;
   setSelectedCard: (card: Card | null) => void;
   setLastViolation: (violation: RuleViolation | null) => void;
   setWaitingFor: (player: PlayerPosition | null) => void;
   addPlayedCard: (player: PlayerPosition, card: Card, faceDown: boolean) => void;
+  addBridgePlayedCard: (player: PlayerPosition, card: Card) => void;
+  addSkitgubbePlayedCard: (player: PlayerPosition, card: Card) => void;
   preserveTrick: () => void;
   clearPreservedTrick: () => void;
   reset: () => void;
@@ -111,7 +158,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   playerName: '',
   roomId: null,
   myPosition: null,
+  gameType: null,
   gameState: null,
+  bridgeState: null,
+  skitgubbeState: null,
   preservedTrick: null,
   isPreservingTrick: false,
   selectedCard: null,
@@ -126,6 +176,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setRoom: (roomId, position) =>
     set({ roomId, myPosition: position }),
+
+  setGameType: (gameType) => set({ gameType }),
+
+  setBridgeState: (state) => set({ bridgeState: state }),
+
+  setSkitgubbeState: (state) => set({ skitgubbeState: state }),
 
   setGameState: (state) => {
     if (!state) {
@@ -230,6 +286,68 @@ export const useGameStore = create<GameStore>((set, get) => ({
       };
     }),
 
+  addBridgePlayedCard: (player, card) =>
+    set((state) => {
+      if (!state.bridgeState) return state;
+      const currentTrick = state.bridgeState.currentTrick;
+      const newCard = { card, playedBy: player };
+
+      if (!currentTrick || currentTrick.cards.length >= 4) {
+        return {
+          bridgeState: {
+            ...state.bridgeState,
+            currentTrick: {
+              cards: [newCard],
+              leader: player,
+            },
+          },
+        };
+      }
+
+      if (currentTrick.cards.some((c) => c.playedBy === player)) {
+        return state;
+      }
+
+      return {
+        bridgeState: {
+          ...state.bridgeState,
+          currentTrick: {
+            ...currentTrick,
+            cards: [...currentTrick.cards, newCard],
+          },
+        },
+      };
+    }),
+
+  addSkitgubbePlayedCard: (player, card) =>
+    set((state) => {
+      if (!state.skitgubbeState) return state;
+      const currentTrick = state.skitgubbeState.currentTrick;
+      const newCard = { card, playedBy: player };
+
+      if (!currentTrick) {
+        return {
+          skitgubbeState: {
+            ...state.skitgubbeState,
+            currentTrick: {
+              cards: [newCard],
+              leader: player,
+            },
+          },
+        };
+      }
+
+      return {
+        skitgubbeState: {
+          ...state.skitgubbeState,
+          currentTrick: {
+            ...currentTrick,
+            cards: [...currentTrick.cards, newCard],
+          },
+        },
+      };
+    }),
+
   preserveTrick: () => {
     const { gameState } = get();
     const currentTrick = gameState?.currentHand?.currentTrick ?? null;
@@ -244,7 +362,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       roomId: null,
       myPosition: null,
+      gameType: null,
       gameState: null,
+      bridgeState: null,
+      skitgubbeState: null,
       preservedTrick: null,
       isPreservingTrick: false,
       selectedCard: null,
@@ -301,3 +422,31 @@ export const useConnectionInfo = () =>
       myPosition: state.myPosition,
     }))
   );
+
+// Game type selector
+export const useGameType = () => useGameStore((state) => state.gameType);
+
+// Bridge selectors
+export const useBridgeState = () => useGameStore((state) => state.bridgeState);
+export const useBridgePhase = () => useGameStore((state) => state.bridgeState?.phase ?? null);
+export const useBridgeContract = () => useGameStore((state) => state.bridgeState?.contract ?? null);
+export const useBridgeBiddingHistory = () =>
+  useGameStore(useShallow((state) => state.bridgeState?.biddingHistory ?? []));
+export const useBridgeDummyHand = () =>
+  useGameStore(useShallow((state) => state.bridgeState?.dummyHand ?? null));
+export const useBridgeTricksWon = () =>
+  useGameStore(useShallow((state) => state.bridgeState?.tricksWon ?? { ns: 0, ew: 0 }));
+export const useBridgeMyHand = () =>
+  useGameStore(useShallow((state) => state.bridgeState?.myHand ?? []));
+
+// Skitgubbe selectors
+export const useSkitgubbeState = () => useGameStore((state) => state.skitgubbeState);
+export const useSkitgubbePhase = () => useGameStore((state) => state.skitgubbeState?.phase ?? null);
+export const useSkitgubbePile = () =>
+  useGameStore(useShallow((state) => state.skitgubbeState?.pile ?? []));
+export const useSkitgubbeStockCount = () =>
+  useGameStore((state) => state.skitgubbeState?.stockCount ?? 0);
+export const useSkitgubbePlayersOut = () =>
+  useGameStore(useShallow((state) => state.skitgubbeState?.playersOut ?? []));
+export const useSkitgubbeMyHand = () =>
+  useGameStore(useShallow((state) => state.skitgubbeState?.myHand ?? []));
