@@ -133,9 +133,9 @@ export function skitgubbeReducer(
       const { winner } = action;
       if (!state.currentTrick) return state;
 
-      // Discard trick cards
+      // Discard trick cards (and any stunsa cards from previous bounces)
       const trickCards = state.currentTrick.cards.map(pc => pc.card);
-      const newDiscard = [...state.discard, ...trickCards];
+      const newDiscard = [...state.discard, ...trickCards, ...state.stunsaCards];
 
       // Find next player for the new trick
       const nextLeader = winner;
@@ -149,6 +149,7 @@ export function skitgubbeReducer(
       return {
         ...state,
         discard: newDiscard,
+        stunsaCards: [], // Clear stunsa cards after trick is won
         currentTrick: {
           cards: [],
           leadPlayer: nextLeader,
@@ -156,6 +157,28 @@ export function skitgubbeReducer(
           winner: undefined,
         },
         currentPlayer: nextLeader,
+      };
+    }
+
+    case 'STUNSA': {
+      // Bounce - cards tied, add to stunsa pile, same player leads again
+      if (!state.currentTrick) return state;
+
+      // Add trick cards to stunsa pile (they stay on table)
+      const trickCards = state.currentTrick.cards.map(pc => pc.card);
+      const newStunsaCards = [...state.stunsaCards, ...trickCards];
+
+      // Same leader starts again with a fresh trick
+      return {
+        ...state,
+        stunsaCards: newStunsaCards,
+        currentTrick: {
+          cards: [],
+          leadPlayer: state.currentTrick.leadPlayer,
+          followPlayer: state.currentTrick.followPlayer,
+          winner: undefined,
+        },
+        currentPlayer: state.currentTrick.leadPlayer,
       };
     }
 

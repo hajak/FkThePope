@@ -10,35 +10,46 @@ import type {
   GameType,
 } from '@fkthepope/shared';
 
-// Bridge-specific client state
+// Bridge-specific client state (matches server's ClientBridgeState)
 interface BridgeClientState {
-  phase: 'bidding' | 'playing' | 'complete';
-  hands: Record<PlayerPosition, Card[]>;
+  id: string;
+  phase: 'waiting' | 'dealing' | 'bidding' | 'playing' | 'hand_end' | 'game_end';
+  players: Record<PlayerPosition, { name: string; isBot: boolean; cardCount: number; tricksWon: number } | null>;
+  dealer: PlayerPosition;
   myHand: Card[];
-  biddingHistory: Array<{ player: PlayerPosition; bid: { type: string; level?: number; strain?: string } }>;
-  contract: { level: number; strain: string; declarer: PlayerPosition; dummy: PlayerPosition; doubled: boolean; redoubled: boolean } | null;
+  bids: Array<{ type: string; level?: number; strain?: string; player: PlayerPosition }>;
+  contract: { level: number; strain: string; declarer: PlayerPosition; dummy: PlayerPosition; doubled: boolean; redoubled: boolean; defendingTeam: string } | null;
+  trumpSuit: string | null;
+  currentTrick: { cards: Array<{ card: Card; playedBy: PlayerPosition }>; leadSuit: string | null; leader: PlayerPosition; currentPlayer: PlayerPosition; trickNumber: number; winner?: PlayerPosition } | null;
+  completedTricksCount: number;
+  scores: Record<string, number>; // 'NS' | 'EW'
+  handNumber: number;
+  gameNumber: number;
   dummyHand: Card[] | null;
-  currentTrick: { cards: Array<{ card: Card; playedBy: PlayerPosition }>; leader: PlayerPosition } | null;
-  tricksWon: { ns: number; ew: number };
   currentPlayer: PlayerPosition | null;
-  players: Record<PlayerPosition, { name: string; isBot: boolean; isConnected: boolean } | null>;
-  scores: { ns: number; ew: number };
+  // Extra fields for local tracking
+  biddingHistory: Array<{ player: PlayerPosition; bid: { type: string; level?: number; strain?: string } }>;
 }
 
-// Skitgubbe-specific client state
+// Skitgubbe-specific client state (matches server's ClientSkitgubbeState)
 interface SkitgubbeClientState {
-  phase: 'phase1' | 'phase2' | 'complete';
+  id: string;
+  phase: 'waiting' | 'dealing' | 'phase1' | 'phase2' | 'game_end';
+  players: Record<PlayerPosition, { name: string; isBot: boolean; cardCount: number; isOut: boolean } | null>;
+  playerCount: number;
+  playerOrder: PlayerPosition[];
   myHand: Card[];
-  trumpSuit: string;
-  trumpCard: Card | null;
   stockCount: number;
-  currentTrick: { cards: Array<{ card: Card; playedBy: PlayerPosition }>; leader: PlayerPosition } | null;
-  pile: Card[];
-  pileCount: number;
+  discardCount: number;
+  trumpSuit: string | null;
+  trumpCard: Card | null;
+  currentTrick: { cards: Array<{ card: Card; playedBy: PlayerPosition }>; leadPlayer: PlayerPosition; followPlayer: PlayerPosition; winner?: PlayerPosition } | null;
+  pile: { cards: Card[]; topCard: Card | null } | null;
   currentPlayer: PlayerPosition | null;
-  playersOut: PlayerPosition[];
+  stunsaCards: Card[]; // Cards from tied tricks (stunsa/bounce)
   loser: PlayerPosition | null;
-  players: Record<PlayerPosition, { name: string; isBot: boolean; isConnected: boolean; cardCount: number } | null>;
+  // Extra fields for local tracking
+  playersOut: PlayerPosition[];
   handCounts: Record<PlayerPosition, number>;
 }
 
@@ -298,7 +309,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
             ...state.bridgeState,
             currentTrick: {
               cards: [newCard],
+              leadSuit: card.suit,
               leader: player,
+              currentPlayer: player,
+              trickNumber: (state.bridgeState.completedTricksCount || 0) + 1,
             },
           },
         };
@@ -326,12 +340,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const newCard = { card, playedBy: player };
 
       if (!currentTrick) {
+        // First card - leadPlayer is the one who played it
+        // followPlayer will be determined by player order
+        const playerOrder = state.skitgubbeState.playerOrder || [];
+        const playerIndex = playerOrder.indexOf(player);
+        const nextIndex = (playerIndex + 1) % playerOrder.length;
+        const followPlayer = playerOrder[nextIndex] || player;
+
         return {
           skitgubbeState: {
             ...state.skitgubbeState,
             currentTrick: {
               cards: [newCard],
-              leader: player,
+              leadPlayer: player,
+              followPlayer,
             },
           },
         };
@@ -435,7 +457,12 @@ export const useBridgeBiddingHistory = () =>
 export const useBridgeDummyHand = () =>
   useGameStore(useShallow((state) => state.bridgeState?.dummyHand ?? null));
 export const useBridgeTricksWon = () =>
-  useGameStore(useShallow((state) => state.bridgeState?.tricksWon ?? { ns: 0, ew: 0 }));
+  useGameStore(useShallow((state) => {
+    if (!state.bridgeState) return { ns: 0, ew: 0 };
+    const ns = (state.bridgeState.players.north?.tricksWon || 0) + (state.bridgeState.players.south?.tricksWon || 0);
+    const ew = (state.bridgeState.players.east?.tricksWon || 0) + (state.bridgeState.players.west?.tricksWon || 0);
+    return { ns, ew };
+  }));
 export const useBridgeMyHand = () =>
   useGameStore(useShallow((state) => state.bridgeState?.myHand ?? []));
 

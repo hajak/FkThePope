@@ -44,7 +44,7 @@ import {
 type AnyGameManager = GameManager | SkitgubbeGameManager | BridgeGameManager;
 
 // Required client version - clients must match this exactly
-const REQUIRED_VERSION = '1.66';
+const REQUIRED_VERSION = '1.67';
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;

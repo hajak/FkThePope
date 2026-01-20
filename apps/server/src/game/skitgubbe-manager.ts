@@ -79,6 +79,7 @@ export class SkitgubbeGameManager implements BaseGameManager {
     error?: string;
     trickComplete?: boolean;
     trickWinner?: PlayerPosition;
+    stunsa?: boolean; // Bounce - equal cards, same player leads again
     drawNeeded?: boolean;
     phase2Starts?: boolean;
   } {
@@ -114,6 +115,32 @@ export class SkitgubbeGameManager implements BaseGameManager {
         this.state.currentTrick.cards,
         this.state.trumpSuit
       );
+
+      // Check for stunsa (bounce) - winner is null when cards are equal
+      if (winner === null) {
+        this.state = skitgubbeReducer(this.state, { type: 'STUNSA' });
+
+        // Draw cards after stunsa
+        this.state = skitgubbeReducer(this.state, { type: 'DRAW_CARDS' });
+
+        // Check if phase 2 should start (stock empty)
+        if (this.state.stock.length === 0) {
+          this.state = skitgubbeReducer(this.state, { type: 'START_PHASE2' });
+          return {
+            success: true,
+            trickComplete: false, // Stunsa means trick isn't really complete
+            stunsa: true,
+            phase2Starts: true,
+          };
+        }
+
+        return {
+          success: true,
+          trickComplete: false,
+          stunsa: true,
+          drawNeeded: true,
+        };
+      }
 
       this.state = skitgubbeReducer(this.state, {
         type: 'COMPLETE_TRICK',

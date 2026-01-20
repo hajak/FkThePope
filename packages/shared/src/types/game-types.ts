@@ -46,7 +46,7 @@ export const GAME_CONFIGS: Record<GameType, GameConfig> = {
   },
   skitgubbe: {
     name: 'Skitgubbe',
-    description: 'Swedish card game. Avoid being the last player with cards!',
+    description: 'Swedish card game. Avoid being the last player with cards! Best with 2-3 players.',
     minPlayers: 2,
     maxPlayers: 4,
     cardsPerPlayer: 'variable',

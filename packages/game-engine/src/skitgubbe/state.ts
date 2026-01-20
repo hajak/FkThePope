@@ -74,6 +74,9 @@ export interface SkitgubbeState {
   // Current player
   currentPlayer: PlayerPosition | null;
 
+  // Stunsa (bounce) cards - cards from tied tricks that stay on table
+  stunsaCards: Card[];
+
   // Game result
   loser: PlayerPosition | null;
 }
@@ -86,6 +89,7 @@ export type SkitgubbeAction =
   | { type: 'START_GAME'; hands: Record<PlayerPosition, Card[]>; stock: Card[]; trumpCard: Card }
   | { type: 'PLAY_CARD_PHASE1'; position: PlayerPosition; card: Card }
   | { type: 'COMPLETE_TRICK'; winner: PlayerPosition }
+  | { type: 'STUNSA' } // Bounce - cards stay on table, same player leads again
   | { type: 'DRAW_CARDS' }
   | { type: 'START_PHASE2' }
   | { type: 'PLAY_CARD_PHASE2'; position: PlayerPosition; card: Card }
@@ -118,6 +122,7 @@ export function createInitialSkitgubbeState(gameId: string, playerCount: number)
     currentTrick: null,
     pile: null,
     currentPlayer: null,
+    stunsaCards: [],
     loser: null,
   };
 }
@@ -144,6 +149,7 @@ export interface ClientSkitgubbeState {
   currentTrick: SkitgubbeTrick | null;
   pile: SkitgubbePile | null;
   currentPlayer: PlayerPosition | null;
+  stunsaCards: Card[]; // Cards from tied tricks (stunsa/bounce)
   loser: PlayerPosition | null;
 }
 
@@ -187,6 +193,7 @@ export function toClientSkitgubbeState(
     currentTrick: state.currentTrick,
     pile: state.pile,
     currentPlayer: state.currentPlayer,
+    stunsaCards: state.stunsaCards,
     loser: state.loser,
   };
 }

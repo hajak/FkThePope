@@ -86,6 +86,10 @@ export function BridgeGamePage() {
 
   const myPartnership = getPartnership(myPosition);
 
+  // Compute team tricks from individual player tricksWon
+  const nsTricks = (bridgeState.players.north?.tricksWon || 0) + (bridgeState.players.south?.tricksWon || 0);
+  const ewTricks = (bridgeState.players.east?.tricksWon || 0) + (bridgeState.players.west?.tricksWon || 0);
+
   // Get last bid for double/redouble validation
   const lastContractBid = [...bridgeState.biddingHistory].reverse().find(b => b.bid.type === 'bid');
   const lastBid = bridgeState.biddingHistory[bridgeState.biddingHistory.length - 1];
@@ -156,11 +160,11 @@ export function BridgeGamePage() {
         <div className="score-display">
           <div className={`score-team ${myPartnership === 'ns' ? 'my-team' : ''}`}>
             <span className="team-label">N/S</span>
-            <span className="team-tricks">{bridgeState.tricksWon.ns} tricks</span>
+            <span className="team-tricks">{nsTricks} tricks</span>
           </div>
           <div className={`score-team ${myPartnership === 'ew' ? 'my-team' : ''}`}>
             <span className="team-label">E/W</span>
-            <span className="team-tricks">{bridgeState.tricksWon.ew} tricks</span>
+            <span className="team-tricks">{ewTricks} tricks</span>
           </div>
         </div>
 

@@ -48,7 +48,7 @@ export function SkitgubbeGamePage() {
   const isMyTurn = waitingFor === myPosition;
   const isPhase1 = skitgubbeState.phase === 'phase1';
   const isPhase2 = skitgubbeState.phase === 'phase2';
-  const isComplete = skitgubbeState.phase === 'complete';
+  const isComplete = skitgubbeState.phase === 'game_end';
   const amIOut = skitgubbeState.playersOut.includes(myPosition);
 
   const handleCardSelect = (card: Card | null) => {
@@ -133,7 +133,7 @@ export function SkitgubbeGamePage() {
           )}
           {isPhase2 && (
             <div className="pile-info">
-              <span className="pile-count">{skitgubbeState.pileCount || skitgubbeState.pile.length}</span>
+              <span className="pile-count">{skitgubbeState.pile?.cards?.length || 0}</span>
               <span className="pile-label">cards in pile</span>
             </div>
           )}
@@ -189,12 +189,12 @@ export function SkitgubbeGamePage() {
             </div>
           )}
 
-          {isPhase2 && (
+          {isPhase2 && skitgubbeState.pile && (
             <div className="pile-display">
-              <h4>Pile ({skitgubbeState.pile.length} cards)</h4>
-              {skitgubbeState.pile.length > 0 && (
+              <h4>Pile ({skitgubbeState.pile.cards?.length || 0} cards)</h4>
+              {(skitgubbeState.pile.cards?.length || 0) > 0 && (
                 <div className="pile-top">
-                  {skitgubbeState.pile.slice(-3).map((card, i) => (
+                  {skitgubbeState.pile.cards.slice(-3).map((card, i) => (
                     <div key={i} className={`pile-card card-display suit-${card.suit}`} style={{ transform: `rotate(${(i - 1) * 5}deg)` }}>
                       <span className="card-rank">{card.rank}</span>
                       <span className="card-suit">{SUIT_SYMBOLS[card.suit]}</span>

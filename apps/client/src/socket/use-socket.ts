@@ -148,11 +148,34 @@ export function useSocket() {
         setBridgeState(null);
         setSkitgubbeState(null);
       } else if (gameType === 'bridge') {
-        setBridgeState(gameState as any);
+        // Add extra tracking fields for local state
+        const bridgeState = gameState as any;
+        setBridgeState({
+          ...bridgeState,
+          biddingHistory: (bridgeState.bids || []).map((bid: any) => ({
+            player: bid.player,
+            bid: { type: bid.type, level: bid.level, strain: bid.strain },
+          })),
+        });
         setGameState(null);
         setSkitgubbeState(null);
       } else if (gameType === 'skitgubbe') {
-        setSkitgubbeState(gameState as any);
+        // Add extra tracking fields for local state
+        const skitgubbeState = gameState as any;
+        const handCounts: Record<string, number> = {};
+        const playersOut: string[] = [];
+        for (const pos of ['north', 'east', 'south', 'west']) {
+          const p = skitgubbeState.players?.[pos];
+          if (p) {
+            handCounts[pos] = p.cardCount || 0;
+            if (p.isOut) playersOut.push(pos);
+          }
+        }
+        setSkitgubbeState({
+          ...skitgubbeState,
+          handCounts,
+          playersOut,
+        });
         setGameState(null);
         setBridgeState(null);
       }
@@ -173,13 +196,34 @@ export function useSocket() {
           useVideoStore.getState().stopVideo();
         }
       } else if (currentGameType === 'bridge') {
-        setBridgeState(gameState as any);
-        if ((gameState as any)?.phase === 'complete') {
+        const bridgeState = gameState as any;
+        setBridgeState({
+          ...bridgeState,
+          biddingHistory: (bridgeState.bids || []).map((bid: any) => ({
+            player: bid.player,
+            bid: { type: bid.type, level: bid.level, strain: bid.strain },
+          })),
+        });
+        if (bridgeState?.phase === 'game_end' || bridgeState?.phase === 'hand_end') {
           useVideoStore.getState().stopVideo();
         }
       } else if (currentGameType === 'skitgubbe') {
-        setSkitgubbeState(gameState as any);
-        if ((gameState as any)?.phase === 'complete') {
+        const skitgubbeState = gameState as any;
+        const handCounts: Record<string, number> = {};
+        const playersOut: string[] = [];
+        for (const pos of ['north', 'east', 'south', 'west']) {
+          const p = skitgubbeState.players?.[pos];
+          if (p) {
+            handCounts[pos] = p.cardCount || 0;
+            if (p.isOut) playersOut.push(pos);
+          }
+        }
+        setSkitgubbeState({
+          ...skitgubbeState,
+          handCounts,
+          playersOut,
+        });
+        if (skitgubbeState?.phase === 'game_end') {
           useVideoStore.getState().stopVideo();
         }
       }
@@ -279,7 +323,7 @@ export function useSocket() {
         setBridgeState({
           ...bridgeState,
           contract: contract as any,
-          phase: passed ? 'complete' : 'playing',
+          phase: passed ? 'game_end' : 'playing',
         });
       }
     });
@@ -337,7 +381,7 @@ export function useSocket() {
         if (skitgubbeState) {
           setSkitgubbeState({
             ...skitgubbeState,
-            phase: 'complete',
+            phase: 'game_end',
             loser,
           });
         }

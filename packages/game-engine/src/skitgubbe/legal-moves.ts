@@ -127,18 +127,36 @@ export function isLegalPhase2Play(
 }
 
 /**
+ * Check if two cards are equal rank (for stunsa/bounce detection)
+ */
+export function isStunsa(card1: Card, card2: Card): boolean {
+  return RANK_VALUES[card1.rank] === RANK_VALUES[card2.rank];
+}
+
+/**
  * Resolve Phase 1 trick - determine winner
+ * Note: Phase 1 does NOT use trump - highest card wins.
+ * If cards are equal rank (stunsa), returns null indicating a bounce.
  */
 export function resolvePhase1Trick(
   cards: SkitgubbePlayedCard[],
-  trumpSuit: Suit | null
-): SkitgubbePlayedCard['playedBy'] {
+  _trumpSuit: Suit | null // Unused in Phase 1 - trump only applies in Phase 2
+): SkitgubbePlayedCard['playedBy'] | null {
   if (cards.length !== 2) {
     throw new Error('Phase 1 trick must have exactly 2 cards');
   }
 
   const [first, second] = cards;
-  const comparison = compareCards(first!.card, second!.card, trumpSuit);
 
-  return comparison >= 0 ? first!.playedBy : second!.playedBy;
+  // Check for stunsa (bounce) - equal ranks
+  if (isStunsa(first!.card, second!.card)) {
+    return null; // Indicates a stunsa - cards stay, same player leads again
+  }
+
+  // In Phase 1, no trump - pure rank comparison
+  // Higher card wins regardless of suit
+  const rank1 = getRankValue(first!.card);
+  const rank2 = getRankValue(second!.card);
+
+  return rank1 >= rank2 ? first!.playedBy : second!.playedBy;
 }
