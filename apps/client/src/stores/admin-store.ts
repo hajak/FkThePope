@@ -67,6 +67,7 @@ interface AdminStore {
   connect: () => void;
   disconnect: () => void;
   selectRoom: (roomId: string | null) => void;
+  killRoom: (roomId: string) => void;
   clearError: () => void;
 }
 
@@ -253,6 +254,13 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
 
   selectRoom: (roomId: string | null) => {
     set({ selectedRoomId: roomId });
+  },
+
+  killRoom: (roomId: string) => {
+    const { socket } = get();
+    if (socket?.connected) {
+      socket.emit('kill-room', { roomId });
+    }
   },
 
   clearError: () => set({ error: null }),

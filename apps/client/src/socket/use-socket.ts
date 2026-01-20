@@ -225,6 +225,10 @@ export function useSocket() {
       showToast(`Player replaced with bot`, 'info');
     });
 
+    socket.on('player-kicked', () => {
+      showToast(`Player was kicked from the room`, 'info');
+    });
+
     // Connect
     connectSocket();
 
@@ -258,6 +262,7 @@ export function useSocket() {
       socket.off('player-disconnected');
       socket.off('player-reconnected');
       socket.off('player-replaced');
+      socket.off('player-kicked');
       unsubscribeConnection();
       cleanup();
       useVideoStore.getState().cleanup();
@@ -319,6 +324,10 @@ export function useGameActions() {
     getSocket().emit('replace-with-bot', { position });
   }, []);
 
+  const kickPlayer = useCallback((position: PlayerPosition) => {
+    getSocket().emit('kick-player', { position });
+  }, []);
+
   const continueGame = useCallback(() => {
     getSocket().emit('continue-game');
   }, []);
@@ -351,6 +360,7 @@ export function useGameActions() {
     addBot,
     removeBot,
     replaceWithBot,
+    kickPlayer,
     continueGame,
     approvePlayer,
     rejectPlayer,

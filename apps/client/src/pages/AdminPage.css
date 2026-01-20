@@ -358,6 +358,74 @@ button.room-item {
   color: #64748b;
 }
 
+/* Stale rooms section */
+.stale-rooms-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.stale-rooms-section h3 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #f87171;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stale-hint {
+  margin: 0 0 16px 0;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.stale-room-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.stale-room-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stale-room-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.stale-room-age {
+  font-size: 11px;
+  color: #f87171;
+  font-weight: 500;
+}
+
+.kill-room-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #dc2626;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.kill-room-btn:hover {
+  background: #b91c1c;
+  transform: scale(1.02);
+}
+
 /* Main content */
 .admin-main {
   flex: 1;

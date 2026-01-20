@@ -70,4 +70,5 @@ export interface AdminServerToClientEvents {
 export interface AdminClientToServerEvents {
   subscribe: () => void;
   unsubscribe: () => void;
+  'kill-room': (data: { roomId: string }) => void;
 }

@@ -43,7 +43,7 @@ export function GamePage() {
     myTurn: isMyTurn,
   } : null;
 
-  const { playCard, leaveRoom, replaceWithBot } = useGameActions();
+  const { playCard, leaveRoom, replaceWithBot, kickPlayer } = useGameActions();
 
   // UI state
   const [showStats, setShowStats] = useState(false);
@@ -270,6 +270,7 @@ export function GamePage() {
           playerMuteStatus={playerMuteStatus}
           isLocalMuted={!isAudioEnabled}
           onReplaceWithBot={replaceWithBot}
+          onKickPlayer={kickPlayer}
         />
       </div>
 

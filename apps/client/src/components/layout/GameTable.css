@@ -243,6 +243,13 @@
   text-decoration: line-through;
 }
 
+.disconnect-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
 .replace-bot-btn {
   background: var(--color-accent);
   color: white;
@@ -258,6 +265,23 @@
 
 .replace-bot-btn:hover {
   background: var(--color-accent-hover);
+}
+
+.kick-btn {
+  background: #c0392b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  white-space: nowrap;
+}
+
+.kick-btn:hover {
+  background: #a93226;
 }
 
 .video-placeholder .mute-indicator {

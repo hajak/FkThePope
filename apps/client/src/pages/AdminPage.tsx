@@ -44,6 +44,7 @@ export function AdminPage() {
     logout,
     connect,
     selectRoom,
+    killRoom,
     clearError,
   } = useAdminStore();
 
@@ -130,6 +131,26 @@ export function AdminPage() {
   };
 
   const selectedRoom = rooms.find((r) => r.roomId === selectedRoomId);
+
+  // Filter stale rooms (older than 2 days)
+  const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+  const staleRooms = rooms.filter((r) => Date.now() - r.createdAt > TWO_DAYS_MS);
+
+  // Format age
+  const formatAge = (createdAt: number) => {
+    const ageMs = Date.now() - createdAt;
+    const days = Math.floor(ageMs / (24 * 60 * 60 * 1000));
+    const hours = Math.floor((ageMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    if (days > 0) return `${days}d ${hours}h`;
+    return `${hours}h`;
+  };
+
+  // Handle kill room with confirmation
+  const handleKillRoom = (roomId: string, roomName: string) => {
+    if (window.confirm(`Are you sure you want to kill room "${roomName}"? This will disconnect all players.`)) {
+      killRoom(roomId);
+    }
+  };
 
   // Format uptime
   const formatUptime = (seconds: number) => {
@@ -258,6 +279,28 @@ export function AdminPage() {
                 </div>
               </button>
             ))}
+
+            {/* Stale Rooms Section */}
+            {staleRooms.length > 0 && (
+              <div className="stale-rooms-section">
+                <h3>Stale Rooms ({staleRooms.length})</h3>
+                <p className="stale-hint">Rooms older than 2 days</p>
+                {staleRooms.map((room) => (
+                  <div key={room.roomId} className="stale-room-item">
+                    <div className="stale-room-info">
+                      <span className="stale-room-name">{room.roomName}</span>
+                      <span className="stale-room-age">{formatAge(room.createdAt)}</span>
+                    </div>
+                    <button
+                      className="kill-room-btn"
+                      onClick={() => handleKillRoom(room.roomId, room.roomName)}
+                    >
+                      Kill
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </aside>
 
           {/* Main content area */}

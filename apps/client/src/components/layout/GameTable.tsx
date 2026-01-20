@@ -5,6 +5,7 @@ import { CardBack } from '../cards/Card';
 import './GameTable.css';
 
 const DISCONNECT_REPLACE_DELAY = 20000; // 20 seconds before "Replace with Bot" appears
+const DISCONNECT_KICK_DELAY = 30000; // 30 seconds before "Kick" button appears
 
 interface VideoPlaceholderProps {
   stream: MediaStream | null | undefined;
@@ -59,6 +60,7 @@ interface GameTableProps {
   playerMuteStatus?: Record<PlayerPosition, boolean>;
   isLocalMuted?: boolean;
   onReplaceWithBot?: (position: PlayerPosition) => void;
+  onKickPlayer?: (position: PlayerPosition) => void;
 }
 
 const SEAT_ORDER: PlayerPosition[] = ['south', 'west', 'north', 'east'];
@@ -73,6 +75,7 @@ export function GameTable({
   playerMuteStatus,
   isLocalMuted,
   onReplaceWithBot,
+  onKickPlayer,
 }: GameTableProps) {
   // Track which disconnected players can be replaced (after 20 seconds)
   const [canReplace, setCanReplace] = useState<Record<PlayerPosition, boolean>>({
@@ -82,7 +85,15 @@ export function GameTable({
     west: false,
   });
 
-  // Set up timers for disconnect replacement eligibility
+  // Track which disconnected players can be kicked (after 30 seconds)
+  const [canKick, setCanKick] = useState<Record<PlayerPosition, boolean>>({
+    north: false,
+    east: false,
+    south: false,
+    west: false,
+  });
+
+  // Set up timers for disconnect replacement and kick eligibility
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
 
@@ -90,21 +101,32 @@ export function GameTable({
       const player = players[pos];
       if (player && !player.isBot && !player.isConnected && player.disconnectedAt) {
         const elapsed = Date.now() - player.disconnectedAt;
-        const remaining = DISCONNECT_REPLACE_DELAY - elapsed;
 
-        if (remaining <= 0) {
-          // Already past delay
+        // Handle replace eligibility (20 seconds)
+        const replaceRemaining = DISCONNECT_REPLACE_DELAY - elapsed;
+        if (replaceRemaining <= 0) {
           setCanReplace((prev) => ({ ...prev, [pos]: true }));
         } else {
-          // Set timer for when replace becomes available
-          const timer = setTimeout(() => {
+          const replaceTimer = setTimeout(() => {
             setCanReplace((prev) => ({ ...prev, [pos]: true }));
-          }, remaining);
-          timers.push(timer);
+          }, replaceRemaining);
+          timers.push(replaceTimer);
+        }
+
+        // Handle kick eligibility (30 seconds)
+        const kickRemaining = DISCONNECT_KICK_DELAY - elapsed;
+        if (kickRemaining <= 0) {
+          setCanKick((prev) => ({ ...prev, [pos]: true }));
+        } else {
+          const kickTimer = setTimeout(() => {
+            setCanKick((prev) => ({ ...prev, [pos]: true }));
+          }, kickRemaining);
+          timers.push(kickTimer);
         }
       } else {
-        // Player connected or is a bot, reset replace eligibility
+        // Player connected or is a bot, reset eligibility
         setCanReplace((prev) => ({ ...prev, [pos]: false }));
+        setCanKick((prev) => ({ ...prev, [pos]: false }));
       }
     });
 
@@ -175,13 +197,25 @@ export function GameTable({
                   <span className={`seat-name ${isDisconnected ? 'name-disconnected' : ''}`}>{player.name}</span>
                   <span className="seat-tricks">{player.tricksWon} tricks</span>
                 </div>
-                {isDisconnected && canReplace[position] && onReplaceWithBot && (
-                  <button
-                    className="replace-bot-btn"
-                    onClick={() => onReplaceWithBot(position)}
-                  >
-                    Replace with Bot
-                  </button>
+                {isDisconnected && (canReplace[position] || canKick[position]) && (
+                  <div className="disconnect-actions">
+                    {canReplace[position] && onReplaceWithBot && (
+                      <button
+                        className="replace-bot-btn"
+                        onClick={() => onReplaceWithBot(position)}
+                      >
+                        Replace with Bot
+                      </button>
+                    )}
+                    {canKick[position] && onKickPlayer && (
+                      <button
+                        className="kick-btn"
+                        onClick={() => onKickPlayer(position)}
+                      >
+                        Kick
+                      </button>
+                    )}
+                  </div>
                 )}
                 {relPos !== 'bottom' && !isDisconnected && (
                   <div className="seat-cards">

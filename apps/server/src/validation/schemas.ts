@@ -134,6 +134,10 @@ export const ReplaceWithBotSchema = z.object({
   position: PlayerPositionSchema,
 });
 
+export const KickPlayerSchema = z.object({
+  position: PlayerPositionSchema,
+});
+
 // Player approval schemas
 export const ApprovePlayerSchema = z.object({
   socketId: z.string().min(1),

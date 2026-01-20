@@ -83,6 +83,12 @@ export function setupAdminSocketHandlers(
       console.log(`[Admin] Client disconnected: ${socket.id}`);
       adminSockets.delete(socket.id);
     });
+
+    // Handle kill-room request
+    socket.on('kill-room', ({ roomId }) => {
+      console.log(`[Admin] Kill room request: ${roomId}`);
+      handleKillRoom(roomId, socket);
+    });
   });
 }
 
@@ -217,4 +223,41 @@ export function notifyAdminOfRoomDeleted(roomId: string): void {
   if (adminNamespace) {
     adminNamespace.emit('room-deleted', { roomId });
   }
+}
+
+/**
+ * Handle admin kill-room request
+ */
+function handleKillRoom(
+  roomId: string,
+  socket: Socket<AdminClientToServerEvents, AdminServerToClientEvents>
+): void {
+  const result = lobbyManagerRef.forceDeleteRoom(roomId);
+
+  if (!result.success) {
+    socket.emit('error', { message: `Room ${roomId} not found` });
+    return;
+  }
+
+  // Clean up active game if exists
+  activeGamesRef.delete(roomId);
+
+  // Notify all players in the room that they've been kicked
+  for (const socketId of result.socketIds) {
+    const playerSocket = ioRef?.sockets.sockets.get(socketId);
+    if (playerSocket) {
+      playerSocket.emit('room-left');
+      playerSocket.leave(roomId);
+      playerSocket.data.roomId = null;
+      playerSocket.data.position = null;
+    }
+  }
+
+  // Update lobby for all clients
+  ioRef?.emit('lobby-state', { rooms: lobbyManagerRef.getRoomList() });
+
+  // Notify all admin clients
+  notifyAdminOfRoomDeleted(roomId);
+
+  console.log(`[Admin] Room ${roomId} killed, ${result.socketIds.length} players removed`);
 }

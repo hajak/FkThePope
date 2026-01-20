@@ -19,6 +19,7 @@ import {
   AddBotSchema,
   RemoveBotSchema,
   ReplaceWithBotSchema,
+  KickPlayerSchema,
   ApprovePlayerSchema,
   RejectPlayerSchema,
 } from '../validation/schemas.js';
@@ -32,7 +33,7 @@ import {
 } from '../admin/index.js';
 
 // Required client version - clients must match this exactly
-const REQUIRED_VERSION = '1.62';
+const REQUIRED_VERSION = '1.64';
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
@@ -125,6 +126,9 @@ export function setupSocketHandlers(io: GameServer): void {
     socket.on('add-bot', (data) => handleAddBot(socket, io, data));
     socket.on('remove-bot', (data) => handleRemoveBot(socket, io, data));
     socket.on('replace-with-bot', (data) => handleReplaceWithBot(socket, io, data));
+
+    // Kick disconnected player event
+    socket.on('kick-player', (data) => handleKickPlayer(socket, io, data));
 
     // Player approval events (host only)
     socket.on('approve-player', (data) => handleApprovePlayer(socket, io, data));
@@ -821,6 +825,54 @@ function handleReplaceWithBot(
       processBotTurns(io, roomId, gameManager);
     }
   }
+}
+
+/**
+ * Handle kicking a disconnected player from the room
+ */
+function handleKickPlayer(
+  socket: GameSocket,
+  io: GameServer,
+  data: unknown
+): void {
+  const validation = validateData(KickPlayerSchema, data);
+  if (!validation.success) {
+    socket.emit('error', { message: `Invalid data: ${validation.error}`, code: 'VALIDATION_ERROR' });
+    return;
+  }
+
+  const roomId = socket.data.roomId;
+  if (!roomId) {
+    socket.emit('error', { message: 'Not in a room', code: 'NOT_IN_ROOM' });
+    return;
+  }
+
+  const position = validation.data.position as PlayerPosition;
+  const result = lobbyManager.kickDisconnectedPlayer(roomId, position, socket.id);
+
+  if (!result.success) {
+    socket.emit('error', { message: result.error!, code: 'KICK_FAILED' });
+    return;
+  }
+
+  // Notify all players in room about the kick
+  io.to(roomId).emit('player-kicked', { position });
+
+  if (result.roomDeleted) {
+    // Track game end if there was an active game
+    if (activeGames.has(roomId)) {
+      AnalyticsManager.getInstance().recordGameEnded(roomId);
+    }
+    activeGames.delete(roomId);
+    notifyAdminOfRoomDeleted(roomId);
+  } else {
+    // Update room state for remaining players
+    io.to(roomId).emit('room-updated', { players: getPlayerViews(roomId) });
+    notifyAdminOfRoomUpdate(roomId);
+  }
+
+  // Update lobby list for everyone
+  io.emit('lobby-state', { rooms: lobbyManager.getRoomList() });
 }
 
 /**

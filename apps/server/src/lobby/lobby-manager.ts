@@ -272,6 +272,84 @@ export class LobbyManager {
   }
 
   /**
+   * Kick a disconnected player from the room
+   * Can only kick after 30 seconds of disconnection
+   */
+  kickDisconnectedPlayer(
+    roomId: string,
+    position: PlayerPosition,
+    kickerSocketId: string
+  ): { success: boolean; error?: string; roomDeleted: boolean } {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return { success: false, error: 'Room not found', roomDeleted: false };
+    }
+
+    // Verify kicker is in room and connected
+    const kickerInRoom = Array.from(room.players.values()).some(
+      (p) => p.socketId === kickerSocketId && p.isConnected
+    );
+    if (!kickerInRoom) {
+      return { success: false, error: 'Not authorized', roomDeleted: false };
+    }
+
+    const player = room.players.get(position);
+    if (!player) {
+      return { success: false, error: 'Player not found', roomDeleted: false };
+    }
+
+    if (player.isBot) {
+      return { success: false, error: 'Cannot kick a bot', roomDeleted: false };
+    }
+
+    if (player.isConnected) {
+      return { success: false, error: 'Player is connected', roomDeleted: false };
+    }
+
+    // Check 30 second threshold
+    const KICK_DELAY_MS = 30000;
+    if (!player.disconnectedAt) {
+      return { success: false, error: 'Player has no disconnect timestamp', roomDeleted: false };
+    }
+
+    const disconnectedMs = Date.now() - player.disconnectedAt;
+    if (disconnectedMs < KICK_DELAY_MS) {
+      const remainingSeconds = Math.ceil((KICK_DELAY_MS - disconnectedMs) / 1000);
+      return { success: false, error: `Must wait ${remainingSeconds} more seconds`, roomDeleted: false };
+    }
+
+    // Remove player from room
+    room.players.delete(position);
+    this.playerRooms.delete(player.socketId);
+
+    // Check if room should be deleted (no connected humans left)
+    const connectedHumans = Array.from(room.players.values()).filter(
+      (p) => !p.isBot && p.isConnected
+    );
+
+    if (connectedHumans.length === 0) {
+      // Also clean up any remaining disconnected player mappings
+      for (const p of room.players.values()) {
+        if (!p.isBot) {
+          this.playerRooms.delete(p.socketId);
+        }
+      }
+      this.rooms.delete(roomId);
+      return { success: true, roomDeleted: true };
+    }
+
+    // Transfer host if the kicked player was the host
+    if (room.hostId === player.socketId) {
+      const newHost = connectedHumans[0];
+      if (newHost) {
+        room.hostId = newHost.socketId;
+      }
+    }
+
+    return { success: true, roomDeleted: false };
+  }
+
+  /**
    * Replace a disconnected player with a bot
    */
   replaceWithBot(roomId: string, position: PlayerPosition): { success: boolean; error?: string } {
@@ -479,12 +557,17 @@ export class LobbyManager {
     // Remove old socket mapping
     this.playerRooms.delete(player.socketId);
 
-    // Update socket ID
+    // Store old socket ID before updating (for host check)
+    const oldSocketId = player.socketId;
+
+    // Update socket ID and mark as reconnected
     player.socketId = newSocketId;
+    player.isConnected = true;
+    player.disconnectedAt = null;
     this.playerRooms.set(newSocketId, roomId);
 
     // Update host if this was the host
-    if (room.hostId === player.socketId) {
+    if (room.hostId === oldSocketId) {
       room.hostId = newSocketId;
     }
 
@@ -613,5 +696,30 @@ export class LobbyManager {
     for (const room of this.rooms.values()) {
       room.pendingPlayers.delete(socketId);
     }
+  }
+
+  /**
+   * Force delete a room (admin action)
+   * Returns list of socket IDs that were in the room
+   */
+  forceDeleteRoom(roomId: string): { success: boolean; socketIds: string[] } {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return { success: false, socketIds: [] };
+    }
+
+    // Collect all socket IDs of players in the room
+    const socketIds: string[] = [];
+    for (const player of room.players.values()) {
+      if (!player.isBot) {
+        socketIds.push(player.socketId);
+        this.playerRooms.delete(player.socketId);
+      }
+    }
+
+    // Delete the room
+    this.rooms.delete(roomId);
+
+    return { success: true, socketIds };
   }
 }

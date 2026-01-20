@@ -91,6 +91,9 @@ export type ClientToServerEvents = {
 
   // Replace disconnected player with bot
   'replace-with-bot': (data: { position: PlayerPosition }) => void;
+
+  // Kick disconnected player from room
+  'kick-player': (data: { position: PlayerPosition }) => void;
 };
 
 /**
@@ -153,6 +156,7 @@ export type ServerToClientEvents = {
   'player-disconnected': (data: { position: PlayerPosition; playerName: string; disconnectedAt: number }) => void;
   'player-reconnected': (data: { position: PlayerPosition; playerName: string }) => void;
   'player-replaced': (data: { position: PlayerPosition }) => void;
+  'player-kicked': (data: { position: PlayerPosition }) => void;
 
   // Version control
   'version-mismatch': (data: { clientVersion: string; requiredVersion: string }) => void;
