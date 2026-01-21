@@ -7,13 +7,20 @@ import { APP_VERSION } from '../socket/socket-client';
 import type { Card, PlayerPosition } from '@fkthepope/shared';
 import './BridgeGamePage.css';
 
-const STRAINS = ['C', 'D', 'H', 'S', 'NT'] as const;
+const STRAINS = ['clubs', 'diamonds', 'hearts', 'spades', 'notrump'] as const;
 const STRAIN_SYMBOLS: Record<string, string> = {
-  'C': '♣',
-  'D': '♦',
-  'H': '♥',
-  'S': '♠',
-  'NT': 'NT',
+  'clubs': '♣',
+  'diamonds': '♦',
+  'hearts': '♥',
+  'spades': '♠',
+  'notrump': 'NT',
+};
+const STRAIN_SHORT: Record<string, string> = {
+  'clubs': 'C',
+  'diamonds': 'D',
+  'hearts': 'H',
+  'spades': 'S',
+  'notrump': 'NT',
 };
 const LEVELS = [1, 2, 3, 4, 5, 6, 7] as const;
 
@@ -241,15 +248,15 @@ export function BridgeGamePage() {
                       {STRAINS.map((strain) => {
                         const isValid = !lastContractBid ||
                           level > (lastContractBid.bid.level || 0) ||
-                          (level === lastContractBid.bid.level && STRAINS.indexOf(strain) > STRAINS.indexOf((lastContractBid.bid.strain || 'C') as typeof strain));
+                          (level === lastContractBid.bid.level && STRAINS.indexOf(strain) > STRAINS.indexOf((lastContractBid.bid.strain || 'clubs') as typeof strain));
                         return (
                           <button
                             key={strain}
-                            className={`bid-btn strain-${strain.toLowerCase()}`}
+                            className={`bid-btn strain-${strain}`}
                             disabled={!isValid}
                             onClick={() => handleBid('bid', level, strain)}
                           >
-                            {level}{STRAIN_SYMBOLS[strain]}
+                            {level}{STRAIN_SHORT[strain]}
                           </button>
                         );
                       })}

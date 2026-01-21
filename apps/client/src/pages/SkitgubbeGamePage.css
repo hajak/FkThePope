@@ -212,11 +212,13 @@
     ". north ."
     "west . east"
     ". south .";
-  gap: 10px;
+  grid-template-columns: 1fr 120px 1fr;
+  grid-template-rows: auto 80px auto;
+  gap: 8px;
   justify-content: center;
   align-items: center;
   margin: 20px auto;
-  max-width: 500px;
+  max-width: 400px;
 }
 
 .skitgubbe-seat {
@@ -296,13 +298,14 @@
 /* Center area */
 .center-area {
   position: absolute;
-  top: 50%;
+  top: 45%;
   left: 50%;
   transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
+  z-index: 1;
 }
 
 .current-trick {
@@ -328,16 +331,16 @@
 }
 
 .card-display {
-  width: 50px;
-  height: 70px;
+  width: 40px;
+  height: 56px;
   background: white;
-  border-radius: 6px;
+  border-radius: 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .card-display.suit-hearts,
@@ -346,11 +349,11 @@
 .card-display.suit-spades { color: #1a1a2e; }
 
 .card-rank {
-  font-size: 18px;
+  font-size: 14px;
 }
 
 .card-suit {
-  font-size: 20px;
+  font-size: 16px;
 }
 
 .card-player {
@@ -632,15 +635,15 @@
   }
 
   .card-display {
-    width: 40px;
-    height: 56px;
+    width: 36px;
+    height: 50px;
   }
 
   .card-rank {
-    font-size: 14px;
+    font-size: 12px;
   }
 
   .card-suit {
-    font-size: 16px;
+    font-size: 14px;
   }
 }

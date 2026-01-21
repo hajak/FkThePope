@@ -137,7 +137,8 @@
 .contract-strain.strain-hearts { color: #e74c3c; }
 .contract-strain.strain-s,
 .contract-strain.strain-spades { color: #3498db; }
-.contract-strain.strain-nt { color: #fff; }
+.contract-strain.strain-nt,
+.contract-strain.strain-notrump { color: #fff; }
 
 .contract-by {
   font-size: 12px;
@@ -366,11 +367,11 @@
 .bid-redouble { color: #e74c3c; font-weight: 700; }
 .bid-contract { font-weight: 700; }
 
-.bid-contract.strain-c { color: #2ecc71; }
-.bid-contract.strain-d { color: #f39c12; }
-.bid-contract.strain-h { color: #e74c3c; }
-.bid-contract.strain-s { color: #3498db; }
-.bid-contract.strain-nt { color: #fff; }
+.bid-contract.strain-clubs { color: #2ecc71; }
+.bid-contract.strain-diamonds { color: #f39c12; }
+.bid-contract.strain-hearts { color: #e74c3c; }
+.bid-contract.strain-spades { color: #3498db; }
+.bid-contract.strain-notrump { color: #fff; }
 
 /* Bidding controls */
 .bidding-controls {
@@ -412,11 +413,11 @@
   cursor: not-allowed;
 }
 
-.bid-btn.strain-c { border-color: #2ecc71; color: #2ecc71; }
-.bid-btn.strain-d { border-color: #f39c12; color: #f39c12; }
-.bid-btn.strain-h { border-color: #e74c3c; color: #e74c3c; }
-.bid-btn.strain-s { border-color: #3498db; color: #3498db; }
-.bid-btn.strain-nt { border-color: #fff; }
+.bid-btn.strain-clubs { border-color: #2ecc71; color: #2ecc71; }
+.bid-btn.strain-diamonds { border-color: #f39c12; color: #f39c12; }
+.bid-btn.strain-hearts { border-color: #e74c3c; color: #e74c3c; }
+.bid-btn.strain-spades { border-color: #3498db; color: #3498db; }
+.bid-btn.strain-notrump { border-color: #fff; }
 
 .bid-actions {
   display: flex;

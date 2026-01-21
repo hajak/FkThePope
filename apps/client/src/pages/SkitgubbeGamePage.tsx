@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useGameStore, useSkitgubbeState } from '../stores/game-store';
 import { useGameActions } from '../socket/use-socket';
 import { useVideoStore } from '../stores/video-store';
@@ -14,6 +14,14 @@ const SUIT_SYMBOLS: Record<string, string> = {
   spades: '♠',
 };
 
+// Duration to show completed trick before clearing (ms)
+const TRICK_DISPLAY_DURATION = 1500;
+
+interface DisplayedTrick {
+  cards: Array<{ card: Card; playedBy: PlayerPosition }>;
+  winner?: PlayerPosition;
+}
+
 export function SkitgubbeGamePage() {
   const myPosition = useGameStore((s) => s.myPosition);
   const waitingFor = useGameStore((s) => s.waitingFor);
@@ -28,6 +36,11 @@ export function SkitgubbeGamePage() {
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [showRules, setShowRules] = useState(false);
 
+  // Trick display state - preserve completed tricks briefly
+  const [displayedTrick, setDisplayedTrick] = useState<DisplayedTrick | null>(null);
+  const lastTrickRef = useRef<DisplayedTrick | null>(null);
+  const trickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Video state
   const localStream = useVideoStore((s) => s.localStream);
   const stopVideo = useVideoStore((s) => s.stopVideo);
@@ -40,6 +53,47 @@ export function SkitgubbeGamePage() {
       }
     };
   }, []);
+
+  // Manage trick display - preserve completed tricks briefly before clearing
+  useEffect(() => {
+    const currentTrick = skitgubbeState?.currentTrick;
+    const currentCards = currentTrick?.cards || [];
+
+    // If we have cards in current trick, show them and remember them
+    if (currentCards.length > 0) {
+      const trick: DisplayedTrick = {
+        cards: currentCards,
+        winner: currentTrick?.winner,
+      };
+      setDisplayedTrick(trick);
+      lastTrickRef.current = trick;
+
+      // Clear any pending timeout
+      if (trickTimeoutRef.current) {
+        clearTimeout(trickTimeoutRef.current);
+        trickTimeoutRef.current = null;
+      }
+    } else if (lastTrickRef.current && lastTrickRef.current.cards.length >= 2) {
+      // Trick just completed (was 2 cards, now 0) - keep showing for a bit
+      if (!trickTimeoutRef.current) {
+        trickTimeoutRef.current = setTimeout(() => {
+          setDisplayedTrick(null);
+          lastTrickRef.current = null;
+          trickTimeoutRef.current = null;
+        }, TRICK_DISPLAY_DURATION);
+      }
+    } else {
+      // No previous trick to preserve
+      setDisplayedTrick(null);
+      lastTrickRef.current = null;
+    }
+
+    return () => {
+      if (trickTimeoutRef.current) {
+        clearTimeout(trickTimeoutRef.current);
+      }
+    };
+  }, [skitgubbeState?.currentTrick]);
 
   if (!skitgubbeState || !myPosition) {
     return <div className="skitgubbe-game-page">Loading...</div>;
@@ -93,14 +147,6 @@ export function SkitgubbeGamePage() {
             {isPhase2 && 'Phase 2: Shed Your Cards!'}
             {isComplete && 'Game Over'}
           </div>
-          {skitgubbeState.trumpSuit && (
-            <div className={`trump-badge trump-${skitgubbeState.trumpSuit}`}>
-              <span className={`trump-icon suit-${skitgubbeState.trumpSuit}`}>
-                {SUIT_SYMBOLS[skitgubbeState.trumpSuit]}
-              </span>
-              <span className="trump-text">Trump</span>
-            </div>
-          )}
         </div>
 
         <div className="header-controls">
@@ -172,11 +218,11 @@ export function SkitgubbeGamePage() {
 
         {/* Current trick / pile */}
         <div className="center-area">
-          {isPhase1 && skitgubbeState.currentTrick && skitgubbeState.currentTrick.cards.length > 0 && (
+          {isPhase1 && displayedTrick && displayedTrick.cards.length > 0 && (
             <div className="current-trick">
               <h4>Current Trick</h4>
               <div className="trick-cards">
-                {skitgubbeState.currentTrick.cards.map(({ card, playedBy }) => (
+                {displayedTrick.cards.map(({ card, playedBy }) => (
                   <div key={`${playedBy}-${card.suit}-${card.rank}`} className={`trick-card from-${playedBy}`}>
                     <div className={`card-display suit-${card.suit}`}>
                       <span className="card-rank">{card.rank}</span>
@@ -205,16 +251,6 @@ export function SkitgubbeGamePage() {
             </div>
           )}
 
-          {/* Trump card display in phase 1 */}
-          {isPhase1 && skitgubbeState.trumpCard && (
-            <div className="trump-card-display">
-              <h4>Trump Card</h4>
-              <div className={`card-display suit-${skitgubbeState.trumpCard.suit}`}>
-                <span className="card-rank">{skitgubbeState.trumpCard.rank}</span>
-                <span className="card-suit">{SUIT_SYMBOLS[skitgubbeState.trumpCard.suit]}</span>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Game over message */}
@@ -306,8 +342,8 @@ export function SkitgubbeGamePage() {
                 <h4>Phase 1: Trick-Taking</h4>
                 <ul>
                   <li>Players take turns playing cards</li>
-                  <li>Must follow suit if possible</li>
-                  <li>Trump suit beats other suits</li>
+                  <li>Highest card wins the trick</li>
+                  <li>Equal cards = stunsa (both stay, play again)</li>
                   <li>Winner takes the trick and draws from stock</li>
                   <li>Continues until stock is empty</li>
                 </ul>
