@@ -3,6 +3,7 @@ import type { PlayerPosition, Card, Suit } from '@fkthepope/shared';
 import { validateAdminToken } from '../analytics/index.js';
 import { LobbyManager, type Room, type RoomPlayer } from '../lobby/lobby-manager.js';
 import { GameManager } from '../game/game-manager.js';
+import { SkitgubbeGameManager } from '../game/skitgubbe-manager.js';
 import type { BaseGameManager } from '../game/base-game-manager.js';
 import type {
   AdminServerToClientEvents,
@@ -132,6 +133,23 @@ interface WhistAdminState {
   handNumber: number;
 }
 
+// Type for Skitgubbe admin state
+interface SkitgubbeAdminState {
+  phase: string;
+  players: Record<PlayerPosition, { hand: Card[]; name: string; isBot: boolean; isOut: boolean } | null>;
+  currentTrick: {
+    cards: Array<{ card: Card; playedBy: PlayerPosition }>;
+    leadPlayer: PlayerPosition;
+    followPlayer: PlayerPosition;
+    winner?: PlayerPosition;
+  } | null;
+  pile: { cards: Card[]; topCard: Card | null } | null;
+  stock: Card[];
+  trumpSuit: Suit | null;
+  currentPlayer: PlayerPosition | null;
+  loser: PlayerPosition | null;
+}
+
 /**
  * Build admin info for a single room
  */
@@ -140,10 +158,11 @@ function buildAdminGameInfo(roomId: string): AdminGameInfo | null {
   if (!room) return null;
 
   const game = activeGamesRef.get(roomId);
-  // Only Whist games have full admin support for now
-  const adminState = (game instanceof GameManager)
-    ? game.getAdminState() as WhistAdminState
-    : null;
+  const isWhist = game instanceof GameManager;
+  const isSkitgubbe = game instanceof SkitgubbeGameManager;
+
+  const whistState = isWhist ? game.getAdminState() as WhistAdminState : null;
+  const skitgubbeState = isSkitgubbe ? game.getAdminState() as SkitgubbeAdminState : null;
 
   // Build player info for each position
   const players: Record<PlayerPosition, AdminPlayerInfo | null> = {
@@ -154,54 +173,98 @@ function buildAdminGameInfo(roomId: string): AdminGameInfo | null {
   };
 
   for (const [position, roomPlayer] of room.players) {
-    const gamePlayer = adminState?.players[position];
     const metadata = clientMetadata.get(roomPlayer.socketId);
 
-    players[position] = {
-      position,
-      name: roomPlayer.name,
-      isBot: roomPlayer.isBot,
-      isConnected: roomPlayer.isConnected,
-      disconnectedAt: roomPlayer.disconnectedAt,
-      socketId: roomPlayer.socketId,
-      hand: gamePlayer?.hand ?? [],
-      tricksWon: gamePlayer?.tricksWon ?? 0,
-      version: metadata?.version,
-      deviceType: metadata?.deviceType,
-    };
+    if (isWhist && whistState) {
+      const gamePlayer = whistState.players[position];
+      players[position] = {
+        position,
+        name: roomPlayer.name,
+        isBot: roomPlayer.isBot,
+        isConnected: roomPlayer.isConnected,
+        disconnectedAt: roomPlayer.disconnectedAt,
+        socketId: roomPlayer.socketId,
+        hand: gamePlayer?.hand ?? [],
+        tricksWon: gamePlayer?.tricksWon ?? 0,
+        version: metadata?.version,
+        deviceType: metadata?.deviceType,
+      };
+    } else if (isSkitgubbe && skitgubbeState) {
+      const gamePlayer = skitgubbeState.players[position];
+      players[position] = {
+        position,
+        name: roomPlayer.name,
+        isBot: roomPlayer.isBot,
+        isConnected: roomPlayer.isConnected,
+        disconnectedAt: roomPlayer.disconnectedAt,
+        socketId: roomPlayer.socketId,
+        hand: gamePlayer?.hand ?? [],
+        tricksWon: 0,
+        isOut: gamePlayer?.isOut ?? false,
+        version: metadata?.version,
+        deviceType: metadata?.deviceType,
+      };
+    } else {
+      // No game or unsupported game type
+      players[position] = {
+        position,
+        name: roomPlayer.name,
+        isBot: roomPlayer.isBot,
+        isConnected: roomPlayer.isConnected,
+        disconnectedAt: roomPlayer.disconnectedAt,
+        socketId: roomPlayer.socketId,
+        hand: [],
+        tricksWon: 0,
+        version: metadata?.version,
+        deviceType: metadata?.deviceType,
+      };
+    }
   }
 
-  // Build current trick info
+  // Build current trick info (Whist)
   let currentTrick: AdminTrickInfo | null = null;
-  if (adminState?.currentTrick) {
+  if (whistState?.currentTrick) {
     currentTrick = {
-      cards: adminState.currentTrick.cards,
-      leadSuit: adminState.currentTrick.leadSuit,
-      trickNumber: adminState.currentTrick.trickNumber,
+      cards: whistState.currentTrick.cards,
+      leadSuit: whistState.currentTrick.leadSuit,
+      trickNumber: whistState.currentTrick.trickNumber,
+    };
+  } else if (skitgubbeState?.currentTrick) {
+    // Convert Skitgubbe trick to admin format
+    currentTrick = {
+      cards: skitgubbeState.currentTrick.cards.map(c => ({ card: c.card, playedBy: c.playedBy, faceDown: false })),
+      leadSuit: null,
+      trickNumber: 0,
+      winner: skitgubbeState.currentTrick.winner,
     };
   }
 
-  // Build completed tricks
-  const completedTricks: AdminTrickInfo[] = adminState?.completedTricks?.map((t: WhistAdminState['completedTricks'][number]) => ({
+  // Build completed tricks (Whist only)
+  const completedTricks: AdminTrickInfo[] = whistState?.completedTricks?.map((t: WhistAdminState['completedTricks'][number]) => ({
     cards: t.cards,
-    leadSuit: null, // Could derive from first card if needed
-    trickNumber: 0, // Could track if needed
+    leadSuit: null,
+    trickNumber: 0,
     winner: t.winner,
   })) ?? [];
 
   return {
     roomId: room.id,
     roomName: room.name,
+    gameType: room.gameType,
     status: room.status,
-    phase: adminState?.phase ?? 'waiting',
+    phase: whistState?.phase ?? skitgubbeState?.phase ?? 'waiting',
     players,
     currentTrick,
     completedTricks,
-    trumpSuit: adminState?.trumpSuit ?? null,
-    currentPlayer: adminState?.currentPlayer ?? null,
-    scores: adminState?.scores ?? { north: 0, east: 0, south: 0, west: 0 },
-    handNumber: adminState?.handNumber ?? 0,
+    trumpSuit: whistState?.trumpSuit ?? skitgubbeState?.trumpSuit ?? null,
+    currentPlayer: whistState?.currentPlayer ?? skitgubbeState?.currentPlayer ?? null,
+    scores: whistState?.scores ?? { north: 0, east: 0, south: 0, west: 0 },
+    handNumber: whistState?.handNumber ?? 0,
     createdAt: room.createdAt,
+    // Skitgubbe-specific
+    pile: skitgubbeState?.pile ?? undefined,
+    stockCount: skitgubbeState?.stock?.length,
+    loser: skitgubbeState?.loser,
   };
 }
 

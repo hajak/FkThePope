@@ -12,6 +12,7 @@ interface AdminPlayerInfo {
   socketId: string;
   hand: Card[];
   tricksWon: number;
+  isOut?: boolean; // Skitgubbe: player has emptied their hand
   version?: string;
   deviceType?: 'mobile' | 'desktop';
 }
@@ -26,6 +27,7 @@ interface AdminTrickInfo {
 export interface AdminGameInfo {
   roomId: string;
   roomName: string;
+  gameType: 'whist' | 'bridge' | 'skitgubbe';
   status: 'waiting' | 'playing';
   phase: string;
   players: Record<PlayerPosition, AdminPlayerInfo | null>;
@@ -36,6 +38,10 @@ export interface AdminGameInfo {
   scores: Record<PlayerPosition, number>;
   handNumber: number;
   createdAt: number;
+  // Skitgubbe-specific
+  pile?: { cards: Card[]; topCard: Card | null };
+  stockCount?: number;
+  loser?: PlayerPosition | null;
 }
 
 interface AdminDashboardState {

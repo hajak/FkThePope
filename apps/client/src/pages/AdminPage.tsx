@@ -270,8 +270,13 @@ export function AdminPage() {
               >
                 <div className="room-name">{room.roomName}</div>
                 <div className="room-meta">
+                  <span className="game-type-mini">{room.gameType?.[0]?.toUpperCase() || 'W'}</span>
                   <span className={`room-status ${room.status}`}>
-                    {room.status === 'playing' ? `Hand ${room.handNumber}` : 'Waiting'}
+                    {room.status === 'playing'
+                      ? room.gameType === 'skitgubbe'
+                        ? room.phase
+                        : `Hand ${room.handNumber}`
+                      : 'Waiting'}
                   </span>
                   <span className="player-count">
                     {Object.values(room.players).filter(Boolean).length}/4
@@ -348,20 +353,28 @@ export function AdminPage() {
 // Room detail component
 function RoomDetail({ room }: { room: AdminGameInfo }) {
   const positions: PlayerPosition[] = ['north', 'east', 'south', 'west'];
+  const isSkitgubbe = room.gameType === 'skitgubbe';
 
   return (
     <div className="room-detail">
       <div className="room-header">
         <h2>{room.roomName}</h2>
         <div className="room-info">
+          <span className="game-type-badge">{room.gameType?.toUpperCase() || 'WHIST'}</span>
           <span>Status: {room.status}</span>
           <span>Phase: {room.phase}</span>
-          {room.trumpSuit && (
+          {room.trumpSuit && !isSkitgubbe && (
             <span className={`trump-display trump-${room.trumpSuit}`}>
               Trump: {getSuitSymbol(room.trumpSuit)}
             </span>
           )}
-          {room.handNumber > 0 && <span>Hand #{room.handNumber}</span>}
+          {room.handNumber > 0 && !isSkitgubbe && <span>Hand #{room.handNumber}</span>}
+          {isSkitgubbe && room.stockCount !== undefined && (
+            <span>Stock: {room.stockCount} cards</span>
+          )}
+          {isSkitgubbe && room.pile && (
+            <span>Pile: {room.pile.cards.length} cards</span>
+          )}
         </div>
       </div>
 
@@ -370,13 +383,14 @@ function RoomDetail({ room }: { room: AdminGameInfo }) {
         {positions.map((pos) => {
           const player = room.players[pos];
           return (
-            <div key={pos} className={`player-card ${pos} ${player ? '' : 'empty'}`}>
+            <div key={pos} className={`player-card ${pos} ${player ? '' : 'empty'} ${player?.isOut ? 'player-out' : ''}`}>
               <div className="player-position">{pos.toUpperCase()}</div>
               {player ? (
                 <>
                   <div className="player-name">
                     {player.name}
                     {player.isBot && <span className="bot-badge">BOT</span>}
+                    {player.isOut && <span className="out-badge">OUT</span>}
                   </div>
                   <div className={`player-connection ${player.isConnected ? 'online' : 'offline'}`}>
                     {player.isConnected ? 'Online' : 'Offline'}
@@ -385,7 +399,8 @@ function RoomDetail({ room }: { room: AdminGameInfo }) {
                     {player.version && <span>v{player.version}</span>}
                     {player.deviceType && <span>{player.deviceType}</span>}
                   </div>
-                  <div className="player-tricks">Tricks: {player.tricksWon}</div>
+                  {!isSkitgubbe && <div className="player-tricks">Tricks: {player.tricksWon}</div>}
+                  {isSkitgubbe && <div className="player-cards-count">Cards: {player.hand.length}</div>}
                   {/* Player's hand */}
                   {player.hand.length > 0 && (
                     <div className="player-hand">
@@ -403,8 +418,8 @@ function RoomDetail({ room }: { room: AdminGameInfo }) {
         })}
       </div>
 
-      {/* Current trick */}
-      {room.currentTrick && room.currentTrick.cards.length > 0 && (
+      {/* Current trick (Whist/Bridge) */}
+      {!isSkitgubbe && room.currentTrick && room.currentTrick.cards.length > 0 && (
         <div className="current-trick">
           <h3>Current Trick (#{room.currentTrick.trickNumber})</h3>
           <div className="trick-cards">
@@ -423,6 +438,48 @@ function RoomDetail({ room }: { room: AdminGameInfo }) {
         </div>
       )}
 
+      {/* Skitgubbe: Current trick in phase 1 */}
+      {isSkitgubbe && room.phase === 'phase1' && room.currentTrick && room.currentTrick.cards.length > 0 && (
+        <div className="current-trick">
+          <h3>Current Trick</h3>
+          <div className="trick-cards">
+            {room.currentTrick.cards.map((pc, i) => (
+              <div key={i} className="played-card">
+                <span className="played-by">{pc.playedBy}:</span>
+                <CardDisplay card={pc.card} faceDown={false} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Skitgubbe: Pile in phase 2 */}
+      {isSkitgubbe && room.pile && room.pile.cards.length > 0 && (
+        <div className="skitgubbe-pile">
+          <h3>Pile ({room.pile.cards.length} cards)</h3>
+          {room.pile.topCard && (
+            <div className="pile-top-card">
+              <span>Top: </span>
+              <CardDisplay card={room.pile.topCard} />
+            </div>
+          )}
+          <div className="pile-cards">
+            {room.pile.cards.slice(-5).map((card, i) => (
+              <CardDisplay key={i} card={card} mini />
+            ))}
+            {room.pile.cards.length > 5 && <span className="more-cards">+{room.pile.cards.length - 5} more</span>}
+          </div>
+        </div>
+      )}
+
+      {/* Skitgubbe: Loser announcement */}
+      {isSkitgubbe && room.loser && (
+        <div className="game-result loser">
+          <h3>Game Over!</h3>
+          <p><strong>{room.players[room.loser]?.name || room.loser}</strong> is the Skitgubbe!</p>
+        </div>
+      )}
+
       {/* Turn indicator */}
       {room.currentPlayer && (
         <div className="turn-indicator">
@@ -430,18 +487,20 @@ function RoomDetail({ room }: { room: AdminGameInfo }) {
         </div>
       )}
 
-      {/* Scores */}
-      <div className="scores-section">
-        <h3>Scores</h3>
-        <div className="scores-grid">
-          {positions.map((pos) => (
-            <div key={pos} className="score-item">
-              <span className="score-pos">{pos}</span>
-              <span className="score-val">{room.scores[pos] ?? 0}</span>
-            </div>
-          ))}
+      {/* Scores (Whist/Bridge only) */}
+      {!isSkitgubbe && (
+        <div className="scores-section">
+          <h3>Scores</h3>
+          <div className="scores-grid">
+            {positions.map((pos) => (
+              <div key={pos} className="score-item">
+                <span className="score-pos">{pos}</span>
+                <span className="score-val">{room.scores[pos] ?? 0}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Completed tricks (collapsible) */}
       {room.completedTricks.length > 0 && (
