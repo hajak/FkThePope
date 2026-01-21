@@ -96,6 +96,58 @@ function PieChart({ data, title }: { data: { mobile: number; desktop: number }; 
   );
 }
 
+function GameTypePieChart({ data, title }: { data: Record<string, number>; title: string }) {
+  const total = (data.whist || 0) + (data.bridge || 0) + (data.skitgubbe || 0);
+  if (total === 0) {
+    return (
+      <div className="chart-container">
+        <h3>{title}</h3>
+        <div className="no-data">No games recorded yet</div>
+      </div>
+    );
+  }
+
+  const whistPercent = Math.round(((data.whist || 0) / total) * 100);
+  const bridgePercent = Math.round(((data.bridge || 0) / total) * 100);
+  const skitgubbePercent = 100 - whistPercent - bridgePercent;
+
+  // Calculate conic gradient stops
+  const whistEnd = whistPercent;
+  const bridgeEnd = whistEnd + bridgePercent;
+
+  return (
+    <div className="chart-container">
+      <h3>{title}</h3>
+      <div className="pie-chart-wrapper">
+        <div
+          className="pie-chart"
+          style={{
+            background: `conic-gradient(
+              #3b82f6 0% ${whistEnd}%,
+              #10b981 ${whistEnd}% ${bridgeEnd}%,
+              #f59e0b ${bridgeEnd}% 100%
+            )`
+          }}
+        />
+        <div className="pie-legend">
+          <div className="pie-legend-item">
+            <span className="pie-dot" style={{ backgroundColor: '#3b82f6' }} />
+            <span>Whist: {data.whist || 0} ({whistPercent}%)</span>
+          </div>
+          <div className="pie-legend-item">
+            <span className="pie-dot" style={{ backgroundColor: '#10b981' }} />
+            <span>Bridge: {data.bridge || 0} ({bridgePercent}%)</span>
+          </div>
+          <div className="pie-legend-item">
+            <span className="pie-dot" style={{ backgroundColor: '#f59e0b' }} />
+            <span>Skitgubbe: {data.skitgubbe || 0} ({skitgubbePercent}%)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CountryTable({ data, title }: { data: Record<string, number>; title: string }) {
   const sorted = Object.entries(data)
     .sort((a, b) => b[1] - a[1])
@@ -466,6 +518,10 @@ export function DashboardPage() {
             <PieChart
               data={dashboardData.deviceBreakdown}
               title="Device Breakdown"
+            />
+            <GameTypePieChart
+              data={dashboardData.gameTypeBreakdown || {}}
+              title="Game Types Played"
             />
             <CountryTable
               data={dashboardData.countryBreakdown}

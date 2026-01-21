@@ -1,4 +1,4 @@
-import type { PlayerPosition } from '@fkthepope/shared';
+import type { PlayerPosition, GameType } from '@fkthepope/shared';
 
 export interface SessionData {
   sessionId: string;
@@ -34,6 +34,7 @@ export interface GameEvent {
   playerCount: number;
   duration?: number;
   winner?: PlayerPosition;
+  gameType?: GameType;
 }
 
 export interface DailyStats {
@@ -106,6 +107,7 @@ export interface DashboardResponse {
   versionBreakdown: Record<string, number>;
   versionPerDay: Array<{ date: string; versions: Record<string, number> }>;
   peakHours: Record<number, number>;
+  gameTypeBreakdown: Record<GameType, number>;
 
   // Recent activity
   recentSessions: Array<{

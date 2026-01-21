@@ -44,7 +44,7 @@ import {
 type AnyGameManager = GameManager | SkitgubbeGameManager | BridgeGameManager;
 
 // Required client version - clients must match this exactly
-const REQUIRED_VERSION = '1.67';
+const REQUIRED_VERSION = '1.70';
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
@@ -486,7 +486,8 @@ function handleLeaveRoom(socket: GameSocket, io: GameServer): void {
       // Only clean up game if room is deleted (no human players left)
       // Track game end if there was an active game
       if (activeGames.has(result.roomId)) {
-        AnalyticsManager.getInstance().recordGameEnded(result.roomId);
+        const room = lobbyManager.getRoom(result.roomId);
+        AnalyticsManager.getInstance().recordGameEnded(result.roomId, undefined, room?.gameType);
       }
       activeGames.delete(result.roomId);
       // Notify admin dashboard of deletion
@@ -549,7 +550,7 @@ function handleStartGame(socket: GameSocket, io: GameServer): void {
   activeGames.set(roomId, gameManager);
 
   // Track game started
-  AnalyticsManager.getInstance().recordGameStarted(roomId, room.players.size);
+  AnalyticsManager.getInstance().recordGameStarted(roomId, room.players.size, room.gameType);
 
   // Track players in the game and log session events
   const playerList: Array<{ position: string; name: string; isBot: boolean }> = [];
@@ -941,7 +942,8 @@ function handleKickPlayer(
   if (result.roomDeleted) {
     // Track game end if there was an active game
     if (activeGames.has(roomId)) {
-      AnalyticsManager.getInstance().recordGameEnded(roomId);
+      const room = lobbyManager.getRoom(roomId);
+      AnalyticsManager.getInstance().recordGameEnded(roomId, undefined, room?.gameType);
     }
     activeGames.delete(roomId);
     notifyAdminOfRoomDeleted(roomId);

@@ -185,7 +185,7 @@ export function SkitgubbeGamePage() {
           )}
         </div>
 
-        {/* Player positions */}
+        {/* Player positions with center area in grid */}
         <div className="skitgubbe-seats">
           {(['north', 'east', 'south', 'west'] as PlayerPosition[]).map((pos) => {
             const player = skitgubbeState.players[pos];
@@ -214,10 +214,9 @@ export function SkitgubbeGamePage() {
               </div>
             );
           })}
-        </div>
 
-        {/* Current trick / pile */}
-        <div className="center-area">
+          {/* Center area - inside grid */}
+          <div className="center-area">
           {isPhase1 && displayedTrick && displayedTrick.cards.length > 0 && (
             <div className="current-trick">
               <h4>Current Trick</h4>
@@ -251,6 +250,7 @@ export function SkitgubbeGamePage() {
             </div>
           )}
 
+          </div>
         </div>
 
         {/* Game over message */}

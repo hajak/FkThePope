@@ -1,5 +1,5 @@
 import { randomBytes, createHash } from 'crypto';
-import type { PlayerPosition } from '@fkthepope/shared';
+import type { PlayerPosition, GameType } from '@fkthepope/shared';
 import { AnalyticsDatabase } from './analytics-db.js';
 import type {
   SessionData,
@@ -319,7 +319,7 @@ export class AnalyticsManager {
   }
 
   // Game tracking
-  recordGameStarted(roomId: string, playerCount: number): void {
+  recordGameStarted(roomId: string, playerCount: number, gameType?: GameType): void {
     this.activeGameCount++;
     this.gameStartTimes.set(roomId, Date.now());
 
@@ -329,6 +329,7 @@ export class AnalyticsManager {
       timestamp: Date.now(),
       roomId,
       playerCount,
+      gameType,
     };
     this.recentEvents.push(event);
 
@@ -338,10 +339,10 @@ export class AnalyticsManager {
       today.peakConcurrentGames = this.activeGameCount;
     }
 
-    console.log(`[Analytics] Game started: ${roomId} (${playerCount} players, ${this.activeGameCount} active)`);
+    console.log(`[Analytics] Game started: ${roomId} (${gameType || 'whist'}, ${playerCount} players, ${this.activeGameCount} active)`);
   }
 
-  recordGameEnded(roomId: string, winner?: PlayerPosition): void {
+  recordGameEnded(roomId: string, winner?: PlayerPosition, gameType?: GameType): void {
     this.activeGameCount = Math.max(0, this.activeGameCount - 1);
     this.totalGamesPlayed++;
 
@@ -357,6 +358,7 @@ export class AnalyticsManager {
       playerCount: 4,
       duration,
       winner,
+      gameType,
     };
     this.recentEvents.push(event);
 
@@ -372,7 +374,7 @@ export class AnalyticsManager {
     const hour = getHour();
     today.hourlyGames[hour] = (today.hourlyGames[hour] || 0) + 1;
 
-    console.log(`[Analytics] Game ended: ${roomId} (${duration}s, winner: ${winner || 'none'})`);
+    console.log(`[Analytics] Game ended: ${roomId} (${gameType || 'whist'}, ${duration}s, winner: ${winner || 'none'})`);
   }
 
   recordPlayerJoinedRoom(sessionId: string, roomId: string): void {
@@ -487,6 +489,18 @@ export class AnalyticsManager {
       }
     }
 
+    // Calculate game type breakdown from recent events
+    const gameTypeBreakdown: Record<string, number> = {
+      whist: 0,
+      bridge: 0,
+      skitgubbe: 0,
+    };
+    for (const event of this.recentEvents) {
+      if (event.type === 'game_ended' && event.gameType) {
+        gameTypeBreakdown[event.gameType] = (gameTypeBreakdown[event.gameType] || 0) + 1;
+      }
+    }
+
     // Calculate period-based stats
     let periodTotalDuration = 0;
     let periodSessionCount = 0;
@@ -570,6 +584,7 @@ export class AnalyticsManager {
       versionBreakdown,
       versionPerDay,
       peakHours,
+      gameTypeBreakdown: gameTypeBreakdown as Record<import('@fkthepope/shared').GameType, number>,
       recentSessions: recentSessions.slice(0, 20),
       players: playerStats,
     };

@@ -102,12 +102,12 @@
 }
 
 .card-center-rank {
-  font-size: 1.8em;
+  font-size: 1.6em;
   font-weight: bold;
 }
 
 .card-suit-large {
-  font-size: 1.4em;
+  font-size: 1.25em;
 }
 
 /* Card back - very dark with subtle pattern */
@@ -162,12 +162,12 @@
   }
 
   .card-center-rank {
-    font-size: 2.2em;
+    font-size: 2em;
     line-height: 1;
   }
 
   .card-suit-large {
-    font-size: 1.6em;
+    font-size: 1.4em;
     line-height: 1;
   }
 

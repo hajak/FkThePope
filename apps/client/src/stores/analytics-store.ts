@@ -36,6 +36,7 @@ interface DashboardData {
   versionBreakdown: Record<string, number>;
   versionPerDay: Array<{ date: string; versions: Record<string, number> }>;
   peakHours: Record<number, number>;
+  gameTypeBreakdown: Record<string, number>;
   recentSessions: Array<{
     clientId: string;
     playerName: string | null;
