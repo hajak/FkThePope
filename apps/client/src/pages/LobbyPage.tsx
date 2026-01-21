@@ -176,11 +176,11 @@ export function LobbyPage() {
           <div className="lobby-instructions">
             <div className="instruction-item">
               <span className="instruction-icon">🃏</span>
-              <span>Follow suit or play trump to win tricks</span>
+              <span>Whist, Bridge, and Skitgubbe</span>
             </div>
             <div className="instruction-item">
               <span className="instruction-icon">🏆</span>
-              <span>Win the most tricks to score points</span>
+              <span>Win tricks or shed your cards first</span>
             </div>
             <div className="instruction-item">
               <span className="instruction-icon">👥</span>
