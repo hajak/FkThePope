@@ -169,9 +169,9 @@ export function LobbyPage() {
               <span className="logo-card red">A</span>
               <span className="logo-card black">A</span>
             </span>
-            <h1>Whist Online</h1>
+            <h1>Cards Online</h1>
           </div>
-          <p className="subtitle">Classic 4-player trick-taking card game</p>
+          <p className="subtitle">Classic card games with friends</p>
 
           <div className="lobby-instructions">
             <div className="instruction-item">

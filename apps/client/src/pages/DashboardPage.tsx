@@ -335,7 +335,7 @@ export function DashboardPage() {
         <div className="login-container">
           <div className="login-card">
             <h1>Analytics Dashboard</h1>
-            <p className="login-subtitle">Whist Online Usage Statistics</p>
+            <p className="login-subtitle">Cards Online Usage Statistics</p>
             <form onSubmit={handleLogin}>
               <input
                 type="password"
@@ -374,7 +374,7 @@ export function DashboardPage() {
     <div className="dashboard-page">
       <header className="dashboard-header">
         <div className="header-left">
-          <h1>Whist Analytics</h1>
+          <h1>Cards Analytics</h1>
           {lastUpdated && (
             <span className="last-updated">
               Updated: {new Date(lastUpdated).toLocaleTimeString()}

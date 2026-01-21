@@ -297,31 +297,9 @@
 
 .create-room {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 16px;
   margin-bottom: 32px;
-}
-
-.create-room input {
-  flex: 1;
-  padding: 14px 18px;
-  border-radius: 12px;
-  border: 2px solid transparent;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--color-text);
-  font-size: 15px;
-  transition: all 0.3s ease;
-}
-
-.create-room input:focus {
-  outline: none;
-  border-color: var(--color-accent);
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.create-room .btn-primary {
-  padding: 14px 24px;
-  border-radius: 12px;
-  font-weight: 600;
 }
 
 .room-list h3 {
