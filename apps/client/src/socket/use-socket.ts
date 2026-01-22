@@ -340,23 +340,54 @@ export function useSocket() {
     });
 
     // Skitgubbe-specific events
-    socket.on('skitgubbe-phase-change', ({ phase }) => {
+    socket.on('skitgubbe-duel-card', ({ player, card, isLeader }) => {
       const skitgubbeState = useGameStore.getState().skitgubbeState;
-      if (skitgubbeState) {
-        setSkitgubbeState({
-          ...skitgubbeState,
-          phase,
-        });
+      const playerName = skitgubbeState?.players[player]?.name || player;
+      if (isLeader) {
+        showToast(`${playerName} leads with ${card.rank} of ${card.suit}`, 'info');
+      } else {
+        showToast(`${playerName} responds with ${card.rank} of ${card.suit}`, 'info');
       }
-      if (phase === 'phase2') {
-        showToast('Phase 2: Get rid of your cards!', 'info');
+    });
+
+    socket.on('skitgubbe-duel-result', ({ winner, isTie }) => {
+      const skitgubbeState = useGameStore.getState().skitgubbeState;
+      if (isTie) {
+        showToast(`It's a tie! Cards go to the tie pile.`, 'info');
+      } else if (winner) {
+        const winnerName = skitgubbeState?.players[winner]?.name || winner;
+        showToast(`${winnerName} wins the duel!`, 'success');
       }
+    });
+
+    socket.on('skitgubbe-draw', ({ player }) => {
+      const skitgubbeState = useGameStore.getState().skitgubbeState;
+      const playerName = skitgubbeState?.players[player]?.name || player;
+      showToast(`${playerName} draws a card`, 'info');
+    });
+
+    socket.on('skitgubbe-phase-change', ({ phase }) => {
+      if (phase === 'shedding') {
+        showToast(`Collection phase complete! Now shed your cards - follow suit to beat!`, 'success');
+      }
+    });
+
+    socket.on('skitgubbe-trick-card', ({ player, card }) => {
+      const skitgubbeState = useGameStore.getState().skitgubbeState;
+      const playerName = skitgubbeState?.players[player]?.name || player;
+      showToast(`${playerName} plays ${card.rank} of ${card.suit}`, 'info');
+    });
+
+    socket.on('skitgubbe-trick-result', ({ winner }) => {
+      const skitgubbeState = useGameStore.getState().skitgubbeState;
+      const winnerName = skitgubbeState?.players[winner]?.name || winner;
+      showToast(`${winnerName} takes the trick`, 'info');
     });
 
     socket.on('skitgubbe-pickup', ({ player, cardsPickedUp }) => {
       const skitgubbeState = useGameStore.getState().skitgubbeState;
       const playerName = skitgubbeState?.players[player]?.name || player;
-      showToast(`${playerName} picked up ${cardsPickedUp} cards`, 'info');
+      showToast(`${playerName} picks up ${cardsPickedUp} cards`, 'info');
     });
 
     socket.on('skitgubbe-player-out', ({ player }) => {
@@ -366,7 +397,7 @@ export function useSocket() {
       if (skitgubbeState) {
         setSkitgubbeState({
           ...skitgubbeState,
-          playersOut: [...skitgubbeState.playersOut, player],
+          finishOrder: [...skitgubbeState.finishOrder, player],
         });
       }
     });
@@ -454,7 +485,12 @@ export function useSocket() {
       socket.off('bridge-bid-made');
       socket.off('bridge-bidding-complete');
       socket.off('bridge-dummy-revealed');
+      socket.off('skitgubbe-duel-card');
+      socket.off('skitgubbe-duel-result');
+      socket.off('skitgubbe-draw');
       socket.off('skitgubbe-phase-change');
+      socket.off('skitgubbe-trick-card');
+      socket.off('skitgubbe-trick-result');
       socket.off('skitgubbe-pickup');
       socket.off('skitgubbe-player-out');
       socket.off('game-ended');
@@ -576,6 +612,29 @@ export function useGameActions() {
   }, []);
 
   // Skitgubbe-specific actions
+  // Phase 1: Play a card in a duel
+  const skitgubbeDuel = useCallback((card: Card) => {
+    const now = Date.now();
+    if (now - lastPlayTimeRef.current < DEBOUNCE_MS) {
+      return;
+    }
+    lastPlayTimeRef.current = now;
+
+    getSocket().emit('skitgubbe-duel', { card });
+  }, []);
+
+  // Phase 1: Draw a card instead of playing
+  const skitgubbeDraw = useCallback(() => {
+    const now = Date.now();
+    if (now - lastPlayTimeRef.current < DEBOUNCE_MS) {
+      return;
+    }
+    lastPlayTimeRef.current = now;
+
+    getSocket().emit('skitgubbe-draw');
+  }, []);
+
+  // Phase 2: Play a card in shedding phase
   const skitgubbePlay = useCallback((card: Card) => {
     const now = Date.now();
     if (now - lastPlayTimeRef.current < DEBOUNCE_MS) {
@@ -586,6 +645,7 @@ export function useGameActions() {
     getSocket().emit('skitgubbe-play', { card });
   }, []);
 
+  // Phase 2: Pick up the pile
   const skitgubbePickup = useCallback(() => {
     const now = Date.now();
     if (now - lastPlayTimeRef.current < DEBOUNCE_MS) {
@@ -614,6 +674,8 @@ export function useGameActions() {
     sendChatMessage,
     bridgeBid,
     bridgePlay,
+    skitgubbeDuel,
+    skitgubbeDraw,
     skitgubbePlay,
     skitgubbePickup,
   };

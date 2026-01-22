@@ -2,18 +2,10 @@ import type { Card, Suit, PlayerPosition } from '@fkthepope/shared';
 
 /**
  * Skitgubbe game phases
- * - phase1: Trick-taking phase where players draw from stock
- * - phase2: Shedding phase where players try to get rid of cards
+ * - collection: Phase 1 - 2-card duels to collect strong cards
+ * - shedding: Phase 2 - Get rid of cards following suit rules (no trump)
  */
-export type SkitgubbePhase = 'waiting' | 'dealing' | 'phase1' | 'phase2' | 'game_end';
-
-/**
- * Played card in Skitgubbe
- */
-export interface SkitgubbePlayedCard {
-  card: Card;
-  playedBy: PlayerPosition;
-}
+export type SkitgubbePhase = 'waiting' | 'dealing' | 'collection' | 'shedding' | 'game_end';
 
 /**
  * A player in Skitgubbe
@@ -24,25 +16,43 @@ export interface SkitgubbePlayer {
   position: PlayerPosition;
   isBot: boolean;
   hand: Card[];
+  collectedCards: Card[];  // Won during collection phase
   isOut: boolean;
 }
 
 /**
- * Phase 1 trick state (two players compete per trick)
+ * Duel card in Phase 1
  */
-export interface SkitgubbeTrick {
-  cards: SkitgubbePlayedCard[];
-  leadPlayer: PlayerPosition;
-  followPlayer: PlayerPosition;
-  winner?: PlayerPosition;
+export interface DuelCard {
+  card: Card;
+  playedBy: PlayerPosition;
 }
 
 /**
- * Phase 2 pile state (cards to beat or pick up)
+ * Current duel state in Phase 1
  */
-export interface SkitgubbePile {
-  cards: Card[];
-  topCard: Card | null;
+export interface DuelState {
+  leader: PlayerPosition;     // Who led the duel
+  leaderCard: Card | null;    // Leader's card
+  responderCard: Card | null; // Responder's card
+  responder: PlayerPosition | null;
+}
+
+/**
+ * Trick card in Phase 2
+ */
+export interface TrickCard {
+  card: Card;
+  playedBy: PlayerPosition;
+}
+
+/**
+ * Current trick state in Phase 2
+ */
+export interface TrickState {
+  cards: TrickCard[];
+  leadSuit: Suit;
+  leader: PlayerPosition;
 }
 
 /**
@@ -55,30 +65,31 @@ export interface SkitgubbeState {
   playerCount: number;
   playerOrder: PlayerPosition[];
 
-  // Stock pile (draw pile)
-  stock: Card[];
+  // Draw pile
+  drawPile: Card[];
 
-  // Discard pile (cards out of play)
-  discard: Card[];
+  // Phase 1 - Collection
+  currentDuel: DuelState | null;
+  tiePile: Card[];  // Accumulated cards from ties
 
-  // Trump suit (revealed at end of phase 1)
-  trumpSuit: Suit | null;
-  trumpCard: Card | null;
-
-  // Phase 1: trick state
-  currentTrick: SkitgubbeTrick | null;
-
-  // Phase 2: pile state
-  pile: SkitgubbePile | null;
+  // Phase 2 - Shedding
+  currentTrick: TrickState | null;
+  pile: Card[];  // Cards to beat / pick up
 
   // Current player
   currentPlayer: PlayerPosition | null;
 
-  // Stunsa (bounce) cards - cards from tied tricks that stay on table
-  stunsaCards: Card[];
-
   // Game result
+  finishOrder: PlayerPosition[];  // Players who finished (first = winner)
   loser: PlayerPosition | null;
+}
+
+/**
+ * Played card for display
+ */
+export interface SkitgubbePlayedCard {
+  card: Card;
+  playedBy: PlayerPosition;
 }
 
 /**
@@ -86,14 +97,18 @@ export interface SkitgubbeState {
  */
 export type SkitgubbeAction =
   | { type: 'ADD_PLAYER'; player: { id: string; name: string; position: PlayerPosition; isBot: boolean } }
-  | { type: 'START_GAME'; hands: Record<PlayerPosition, Card[]>; stock: Card[]; trumpCard: Card }
-  | { type: 'PLAY_CARD_PHASE1'; position: PlayerPosition; card: Card }
-  | { type: 'COMPLETE_TRICK'; winner: PlayerPosition }
-  | { type: 'STUNSA' } // Bounce - cards stay on table, same player leads again
-  | { type: 'DRAW_CARDS' }
-  | { type: 'START_PHASE2' }
-  | { type: 'PLAY_CARD_PHASE2'; position: PlayerPosition; card: Card }
+  | { type: 'START_GAME'; deal: Record<PlayerPosition, Card[]>; drawPile: Card[] }
+  // Phase 1 actions
+  | { type: 'PLAY_DUEL_CARD'; position: PlayerPosition; card: Card }
+  | { type: 'DRAW_CARD'; position: PlayerPosition }
+  | { type: 'RESOLVE_DUEL' }
+  // Phase transition
+  | { type: 'START_SHEDDING' }
+  // Phase 2 actions
+  | { type: 'PLAY_TRICK_CARD'; position: PlayerPosition; card: Card }
   | { type: 'PICK_UP_PILE'; position: PlayerPosition }
+  | { type: 'RESOLVE_TRICK' }
+  // Game end
   | { type: 'PLAYER_OUT'; position: PlayerPosition }
   | { type: 'GAME_END'; loser: PlayerPosition };
 
@@ -115,41 +130,66 @@ export function createInitialSkitgubbeState(gameId: string, playerCount: number)
     },
     playerCount,
     playerOrder: positions,
-    stock: [],
-    discard: [],
-    trumpSuit: null,
-    trumpCard: null,
+    drawPile: [],
+    currentDuel: null,
+    tiePile: [],
     currentTrick: null,
-    pile: null,
+    pile: [],
     currentPlayer: null,
-    stunsaCards: [],
+    finishOrder: [],
     loser: null,
   };
 }
 
 /**
- * Client view of Skitgubbe state (hides other players' hands)
+ * Client view of a player
+ */
+export interface ClientPlayerView {
+  name: string;
+  isBot: boolean;
+  handCount: number;
+  collectedCount: number;
+  isOut: boolean;
+}
+
+/**
+ * Client view of Skitgubbe state
  */
 export interface ClientSkitgubbeState {
   id: string;
   phase: SkitgubbePhase;
-  players: Record<PlayerPosition, {
-    name: string;
-    isBot: boolean;
-    cardCount: number;
-    isOut: boolean;
-  } | null>;
+  players: Record<PlayerPosition, ClientPlayerView | null>;
   playerCount: number;
   playerOrder: PlayerPosition[];
+
+  // My cards
   myHand: Card[];
-  stockCount: number;
-  discardCount: number;
-  trumpSuit: Suit | null;
-  trumpCard: Card | null;
-  currentTrick: SkitgubbeTrick | null;
-  pile: SkitgubbePile | null;
+  myCollectedCards: Card[];
+
+  // Draw pile info
+  drawPileCount: number;
+
+  // Phase 1 - Duel state
+  currentDuel: {
+    leader: PlayerPosition;
+    leaderCard: Card | null;
+    responder: PlayerPosition | null;
+    responderCard: Card | null;
+  } | null;
+  tiePileCount: number;
+
+  // Phase 2 - Trick/pile state
+  currentTrick: {
+    cards: TrickCard[];
+    leadSuit: Suit;
+    leader: PlayerPosition;
+  } | null;
+  pile: Card[];
+  pileTopCard: Card | null;
+
+  // Game state
   currentPlayer: PlayerPosition | null;
-  stunsaCards: Card[]; // Cards from tied tricks (stunsa/bounce)
+  finishOrder: PlayerPosition[];
   loser: PlayerPosition | null;
 }
 
@@ -173,11 +213,15 @@ export function toClientSkitgubbeState(
       players[pos] = {
         name: player.name,
         isBot: player.isBot,
-        cardCount: player.hand.length,
+        handCount: player.hand.length,
+        collectedCount: player.collectedCards.length,
         isOut: player.isOut,
       };
     }
   }
+
+  const myPlayer = state.players[viewerPosition];
+  const pileTopCard = state.pile.length > 0 ? state.pile[state.pile.length - 1] ?? null : null;
 
   return {
     id: state.id,
@@ -185,15 +229,25 @@ export function toClientSkitgubbeState(
     players,
     playerCount: state.playerCount,
     playerOrder: state.playerOrder,
-    myHand: state.players[viewerPosition]?.hand ?? [],
-    stockCount: state.stock.length,
-    discardCount: state.discard.length,
-    trumpSuit: state.trumpSuit,
-    trumpCard: state.trumpCard,
-    currentTrick: state.currentTrick,
+    myHand: myPlayer?.hand ?? [],
+    myCollectedCards: myPlayer?.collectedCards ?? [],
+    drawPileCount: state.drawPile.length,
+    currentDuel: state.currentDuel ? {
+      leader: state.currentDuel.leader,
+      leaderCard: state.currentDuel.leaderCard,
+      responder: state.currentDuel.responder,
+      responderCard: state.currentDuel.responderCard,
+    } : null,
+    tiePileCount: state.tiePile.length,
+    currentTrick: state.currentTrick ? {
+      cards: state.currentTrick.cards,
+      leadSuit: state.currentTrick.leadSuit,
+      leader: state.currentTrick.leader,
+    } : null,
     pile: state.pile,
+    pileTopCard,
     currentPlayer: state.currentPlayer,
-    stunsaCards: state.stunsaCards,
+    finishOrder: state.finishOrder,
     loser: state.loser,
   };
 }

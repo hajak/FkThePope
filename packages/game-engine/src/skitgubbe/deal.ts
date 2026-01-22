@@ -16,19 +16,22 @@ function createDeck(): Card[] {
 }
 
 /**
+ * Result of dealing for Skitgubbe
+ */
+export interface SkitgubbeDealResult {
+  hands: Record<PlayerPosition, Card[]>;
+  drawPile: Card[];
+}
+
+/**
  * Deal cards for Skitgubbe
- * - Each player gets 3 cards
- * - Remaining cards form the stock
- * - Last card of stock is the trump card (revealed)
+ * Each player gets 3 cards in hand
+ * Remaining cards form the draw pile (talon)
  */
 export function dealSkitgubbe(
   playerPositions: PlayerPosition[],
   seed?: number
-): {
-  hands: Record<PlayerPosition, Card[]>;
-  stock: Card[];
-  trumpCard: Card;
-} {
+): SkitgubbeDealResult {
   const deck = createDeck();
   const shuffled = shuffle(deck, seed);
 
@@ -39,8 +42,9 @@ export function dealSkitgubbe(
     west: [],
   };
 
-  // Deal 3 cards to each player
   let cardIndex = 0;
+
+  // Deal 3 cards to each player, one at a time
   for (let round = 0; round < 3; round++) {
     for (const position of playerPositions) {
       const card = shuffled[cardIndex];
@@ -51,16 +55,11 @@ export function dealSkitgubbe(
     }
   }
 
-  // Remaining cards form the stock
-  const stock = shuffled.slice(cardIndex);
-
-  // Trump card is the bottom card of the stock (placed face up under the stock)
-  // We'll put it at index 0 so it's drawn last
-  const trumpCard = stock[0]!;
+  // Remaining cards form the draw pile
+  const drawPile = shuffled.slice(cardIndex);
 
   return {
     hands,
-    stock,
-    trumpCard,
+    drawPile,
   };
 }

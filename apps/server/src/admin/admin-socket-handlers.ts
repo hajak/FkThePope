@@ -133,20 +133,23 @@ interface WhistAdminState {
   handNumber: number;
 }
 
-// Type for Skitgubbe admin state
+// Type for Skitgubbe admin state (matches SkitgubbeState from game-engine)
 interface SkitgubbeAdminState {
   phase: string;
-  players: Record<PlayerPosition, { hand: Card[]; name: string; isBot: boolean; isOut: boolean } | null>;
-  currentTrick: {
-    cards: Array<{ card: Card; playedBy: PlayerPosition }>;
-    leadPlayer: PlayerPosition;
-    followPlayer: PlayerPosition;
-    winner?: PlayerPosition;
-  } | null;
-  pile: { cards: Card[]; topCard: Card | null } | null;
-  stock: Card[];
-  trumpSuit: Suit | null;
+  players: Record<PlayerPosition, {
+    hand: Card[];
+    collectedCards: Card[];
+    name: string;
+    isBot: boolean;
+    isOut: boolean;
+  } | null>;
+  drawPile: Card[];
+  currentDuel: unknown | null;
+  tiePile: Card[];
+  currentTrick: unknown | null;
+  pile: Card[];
   currentPlayer: PlayerPosition | null;
+  finishOrder: PlayerPosition[];
   loser: PlayerPosition | null;
 }
 
@@ -221,21 +224,13 @@ function buildAdminGameInfo(roomId: string): AdminGameInfo | null {
     }
   }
 
-  // Build current trick info (Whist)
+  // Build current trick info (Whist only - Skitgubbe uses pile instead)
   let currentTrick: AdminTrickInfo | null = null;
   if (whistState?.currentTrick) {
     currentTrick = {
       cards: whistState.currentTrick.cards,
       leadSuit: whistState.currentTrick.leadSuit,
       trickNumber: whistState.currentTrick.trickNumber,
-    };
-  } else if (skitgubbeState?.currentTrick) {
-    // Convert Skitgubbe trick to admin format
-    currentTrick = {
-      cards: skitgubbeState.currentTrick.cards.map(c => ({ card: c.card, playedBy: c.playedBy, faceDown: false })),
-      leadSuit: null,
-      trickNumber: 0,
-      winner: skitgubbeState.currentTrick.winner,
     };
   }
 
@@ -256,14 +251,14 @@ function buildAdminGameInfo(roomId: string): AdminGameInfo | null {
     players,
     currentTrick,
     completedTricks,
-    trumpSuit: whistState?.trumpSuit ?? skitgubbeState?.trumpSuit ?? null,
+    trumpSuit: whistState?.trumpSuit ?? null,
     currentPlayer: whistState?.currentPlayer ?? skitgubbeState?.currentPlayer ?? null,
     scores: whistState?.scores ?? { north: 0, east: 0, south: 0, west: 0 },
     handNumber: whistState?.handNumber ?? 0,
     createdAt: room.createdAt,
     // Skitgubbe-specific
-    pile: skitgubbeState?.pile ?? undefined,
-    stockCount: skitgubbeState?.stock?.length,
+    pile: skitgubbeState?.pile ? { cards: skitgubbeState.pile, topCard: skitgubbeState.pile[skitgubbeState.pile.length - 1] ?? null } : undefined,
+    discardCount: skitgubbeState?.tiePile?.length,
     loser: skitgubbeState?.loser,
   };
 }

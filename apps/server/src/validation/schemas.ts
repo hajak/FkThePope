@@ -152,6 +152,12 @@ export const RejectPlayerSchema = z.object({
 });
 
 // Skitgubbe event schemas
+// Phase 1: Duel card
+export const SkitgubbeDuelSchema = z.object({
+  card: CardSchema,
+});
+
+// Phase 2: Play card
 export const SkitgubbePlaySchema = z.object({
   card: CardSchema,
 });

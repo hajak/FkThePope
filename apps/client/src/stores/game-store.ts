@@ -34,23 +34,40 @@ interface BridgeClientState {
 // Skitgubbe-specific client state (matches server's ClientSkitgubbeState)
 interface SkitgubbeClientState {
   id: string;
-  phase: 'waiting' | 'dealing' | 'phase1' | 'phase2' | 'game_end';
-  players: Record<PlayerPosition, { name: string; isBot: boolean; cardCount: number; isOut: boolean } | null>;
+  phase: 'waiting' | 'dealing' | 'collection' | 'shedding' | 'game_end';
+  players: Record<PlayerPosition, { name: string; isBot: boolean; handCount: number; collectedCount: number; isOut: boolean } | null>;
   playerCount: number;
   playerOrder: PlayerPosition[];
+
+  // My cards
   myHand: Card[];
-  stockCount: number;
-  discardCount: number;
-  trumpSuit: string | null;
-  trumpCard: Card | null;
-  currentTrick: { cards: Array<{ card: Card; playedBy: PlayerPosition }>; leadPlayer: PlayerPosition; followPlayer: PlayerPosition; winner?: PlayerPosition } | null;
-  pile: { cards: Card[]; topCard: Card | null } | null;
+  myCollectedCards: Card[];
+
+  // Draw pile
+  drawPileCount: number;
+
+  // Phase 1 - Duel state
+  currentDuel: {
+    leader: PlayerPosition;
+    leaderCard: Card | null;
+    responder: PlayerPosition | null;
+    responderCard: Card | null;
+  } | null;
+  tiePileCount: number;
+
+  // Phase 2 - Trick/pile state
+  currentTrick: {
+    cards: Array<{ card: Card; playedBy: PlayerPosition }>;
+    leadSuit: string;
+    leader: PlayerPosition;
+  } | null;
+  pile: Card[];
+  pileTopCard: Card | null;
+
+  // Game state
   currentPlayer: PlayerPosition | null;
-  stunsaCards: Card[]; // Cards from tied tricks (stunsa/bounce)
+  finishOrder: PlayerPosition[];
   loser: PlayerPosition | null;
-  // Extra fields for local tracking
-  playersOut: PlayerPosition[];
-  handCounts: Record<PlayerPosition, number>;
 }
 
 interface GameStore {
@@ -336,36 +353,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   addSkitgubbePlayedCard: (player, card) =>
     set((state) => {
       if (!state.skitgubbeState) return state;
-      const currentTrick = state.skitgubbeState.currentTrick;
       const newCard = { card, playedBy: player };
-
-      if (!currentTrick) {
-        // First card - leadPlayer is the one who played it
-        // followPlayer will be determined by player order
-        const playerOrder = state.skitgubbeState.playerOrder || [];
-        const playerIndex = playerOrder.indexOf(player);
-        const nextIndex = (playerIndex + 1) % playerOrder.length;
-        const followPlayer = playerOrder[nextIndex] || player;
-
-        return {
-          skitgubbeState: {
-            ...state.skitgubbeState,
-            currentTrick: {
-              cards: [newCard],
-              leadPlayer: player,
-              followPlayer,
-            },
-          },
-        };
-      }
 
       return {
         skitgubbeState: {
           ...state.skitgubbeState,
-          currentTrick: {
-            ...currentTrick,
-            cards: [...currentTrick.cards, newCard],
-          },
+          lastPlayedCards: [newCard],
         },
       };
     }),
@@ -471,9 +464,22 @@ export const useSkitgubbeState = () => useGameStore((state) => state.skitgubbeSt
 export const useSkitgubbePhase = () => useGameStore((state) => state.skitgubbeState?.phase ?? null);
 export const useSkitgubbePile = () =>
   useGameStore(useShallow((state) => state.skitgubbeState?.pile ?? []));
-export const useSkitgubbeStockCount = () =>
-  useGameStore((state) => state.skitgubbeState?.stockCount ?? 0);
-export const useSkitgubbePlayersOut = () =>
-  useGameStore(useShallow((state) => state.skitgubbeState?.playersOut ?? []));
+export const useSkitgubbePileTopCard = () =>
+  useGameStore((state) => state.skitgubbeState?.pileTopCard ?? null);
+export const useSkitgubbeFinishOrder = () =>
+  useGameStore(useShallow((state) => state.skitgubbeState?.finishOrder ?? []));
 export const useSkitgubbeMyHand = () =>
   useGameStore(useShallow((state) => state.skitgubbeState?.myHand ?? []));
+export const useSkitgubbeMyCollectedCards = () =>
+  useGameStore(useShallow((state) => state.skitgubbeState?.myCollectedCards ?? []));
+// Skitgubbe has no trump - selectors return null for compatibility
+export const useSkitgubbeTrumpSuit = () => null;
+export const useSkitgubbeTrumpCard = () => null;
+export const useSkitgubbeCurrentDuel = () =>
+  useGameStore(useShallow((state) => state.skitgubbeState?.currentDuel ?? null));
+export const useSkitgubbeDrawPileCount = () =>
+  useGameStore((state) => state.skitgubbeState?.drawPileCount ?? 0);
+export const useSkitgubbeTiePileCount = () =>
+  useGameStore((state) => state.skitgubbeState?.tiePileCount ?? 0);
+export const useSkitgubbeCurrentTrick = () =>
+  useGameStore(useShallow((state) => state.skitgubbeState?.currentTrick ?? null));

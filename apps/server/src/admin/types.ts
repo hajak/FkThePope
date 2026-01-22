@@ -12,7 +12,10 @@ export interface AdminPlayerInfo {
   socketId: string;
   hand: Card[];
   tricksWon: number;
-  isOut?: boolean; // Skitgubbe: player has emptied their hand
+  // Skitgubbe-specific
+  isOut?: boolean;
+  faceUpCards?: Card[];
+  faceDownCards?: Card[];
   version?: string;
   deviceType?: 'mobile' | 'desktop';
 }
@@ -46,7 +49,7 @@ export interface AdminGameInfo {
   createdAt: number;
   // Skitgubbe-specific fields
   pile?: { cards: Card[]; topCard: Card | null };
-  stockCount?: number;
+  discardCount?: number;
   loser?: PlayerPosition | null;
 }
 

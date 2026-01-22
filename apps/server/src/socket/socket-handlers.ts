@@ -27,6 +27,7 @@ import {
   KickPlayerSchema,
   ApprovePlayerSchema,
   RejectPlayerSchema,
+  SkitgubbeDuelSchema,
   SkitgubbePlaySchema,
   BridgeBidSchema,
   BridgePlaySchema,
@@ -44,7 +45,7 @@ import {
 type AnyGameManager = GameManager | SkitgubbeGameManager | BridgeGameManager;
 
 // Required client version - clients must match this exactly
-const REQUIRED_VERSION = '1.72';
+const REQUIRED_VERSION = '1.75';
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
@@ -133,7 +134,10 @@ export function setupSocketHandlers(io: GameServer): void {
     socket.on('play-card', (data) => handlePlayCard(socket, io, data));
     socket.on('continue-game', () => handleContinueGame(socket, io));
 
-    // Skitgubbe events
+    // Skitgubbe events - Phase 1 (Collection)
+    socket.on('skitgubbe-duel', (data) => handleSkitgubbeDuel(socket, io, data));
+    socket.on('skitgubbe-draw', () => handleSkitgubbeDraw(socket, io));
+    // Skitgubbe events - Phase 2 (Shedding)
     socket.on('skitgubbe-play', (data) => handleSkitgubbePlay(socket, io, data));
     socket.on('skitgubbe-pickup', () => handleSkitgubbePickup(socket, io));
 
@@ -1400,7 +1404,143 @@ function handleContinueGame(socket: GameSocket, io: GameServer): void {
 }
 
 /**
- * Handle Skitgubbe card play
+ * Handle Skitgubbe duel card play (Phase 1)
+ */
+function handleSkitgubbeDuel(
+  socket: GameSocket,
+  io: GameServer,
+  data: unknown
+): void {
+  const validation = validateData(SkitgubbeDuelSchema, data);
+  if (!validation.success) {
+    socket.emit('error', { message: `Invalid data: ${validation.error}`, code: 'VALIDATION_ERROR' });
+    return;
+  }
+
+  const roomId = socket.data.roomId;
+  const position = socket.data.position;
+
+  if (!roomId || !position) {
+    socket.emit('error', { message: 'Not in a game', code: 'NOT_IN_GAME' });
+    return;
+  }
+
+  const gameManager = activeGames.get(roomId);
+  if (!gameManager || !(gameManager instanceof SkitgubbeGameManager)) {
+    socket.emit('error', { message: 'Skitgubbe game not found', code: 'GAME_NOT_FOUND' });
+    return;
+  }
+
+  const phase = gameManager.getPhase();
+  if (phase !== 'collection') {
+    socket.emit('error', { message: 'Not in collection phase', code: 'INVALID_PHASE' });
+    return;
+  }
+
+  const { card: cardData } = validation.data;
+  const card: Card = { suit: cardData.suit, rank: cardData.rank };
+
+  const result = gameManager.playDuelCard(position, card);
+
+  if (!result.success) {
+    socket.emit('play-rejected', {
+      violation: {
+        ruleId: 'base',
+        ruleName: 'Game Rules',
+        message: result.error!,
+        attemptedCard: card,
+      },
+    });
+    return;
+  }
+
+  // Broadcast the duel card
+  const clientState = gameManager.getClientState(position);
+  const isLeader = !clientState.currentDuel?.leaderCard || clientState.currentDuel?.leaderCard?.suit === card.suit && clientState.currentDuel?.leaderCard?.rank === card.rank;
+  io.to(roomId).emit('skitgubbe-duel-card', {
+    player: position,
+    card,
+    isLeader: isLeader || result.duelComplete === undefined,
+  });
+
+  // Handle duel complete
+  if (result.duelComplete) {
+    io.to(roomId).emit('skitgubbe-duel-result', {
+      winner: result.winner || null,
+      isTie: result.isTie || false,
+      tiePileCount: clientState.tiePileCount,
+    });
+  }
+
+  // Handle phase change
+  if (result.phaseChange) {
+    const trumpInfo = gameManager.getTrumpInfo();
+    io.to(roomId).emit('skitgubbe-phase-change', {
+      phase: 'shedding',
+      trumpSuit: trumpInfo.trumpSuit,
+      trumpCard: trumpInfo.trumpCard,
+    });
+  }
+
+  broadcastGameStateForGame(io, roomId, gameManager, 'skitgubbe');
+  broadcastTurnForGame(io, roomId, gameManager, 'skitgubbe');
+  processSkitgubbeBotTurns(io, roomId, gameManager);
+}
+
+/**
+ * Handle Skitgubbe draw (Phase 1)
+ */
+function handleSkitgubbeDraw(socket: GameSocket, io: GameServer): void {
+  const roomId = socket.data.roomId;
+  const position = socket.data.position;
+
+  if (!roomId || !position) {
+    socket.emit('error', { message: 'Not in a game', code: 'NOT_IN_GAME' });
+    return;
+  }
+
+  const gameManager = activeGames.get(roomId);
+  if (!gameManager || !(gameManager instanceof SkitgubbeGameManager)) {
+    socket.emit('error', { message: 'Skitgubbe game not found', code: 'GAME_NOT_FOUND' });
+    return;
+  }
+
+  const phase = gameManager.getPhase();
+  if (phase !== 'collection') {
+    socket.emit('error', { message: 'Not in collection phase', code: 'INVALID_PHASE' });
+    return;
+  }
+
+  const result = gameManager.drawCard(position);
+
+  if (!result.success) {
+    socket.emit('error', { message: result.error!, code: 'DRAW_FAILED' });
+    return;
+  }
+
+  // Broadcast that player drew
+  io.to(roomId).emit('skitgubbe-draw', {
+    player: position,
+    isLastCard: result.isLastCard || false,
+  });
+
+  // Handle phase change
+  if (result.phaseChange) {
+    const trumpInfo = gameManager.getTrumpInfo();
+    io.to(roomId).emit('skitgubbe-phase-change', {
+      phase: 'shedding',
+      trumpSuit: trumpInfo.trumpSuit,
+      trumpCard: trumpInfo.trumpCard,
+    });
+  }
+
+  broadcastGameStateForGame(io, roomId, gameManager, 'skitgubbe');
+  broadcastTurnForGame(io, roomId, gameManager, 'skitgubbe');
+  processSkitgubbeBotTurns(io, roomId, gameManager);
+}
+
+/**
+ * Handle Skitgubbe card play (Phase 2 - Shedding)
  */
 function handleSkitgubbePlay(
   socket: GameSocket,
@@ -1427,19 +1567,16 @@ function handleSkitgubbePlay(
     return;
   }
 
-  const { card: cardData } = validation.data;
-  const card: Card = { suit: cardData.suit, rank: cardData.rank };
   const phase = gameManager.getPhase();
-
-  let result;
-  if (phase === 'phase1') {
-    result = gameManager.playCardPhase1(position, card);
-  } else if (phase === 'phase2') {
-    result = gameManager.playCardPhase2(position, card);
-  } else {
-    socket.emit('error', { message: 'Cannot play now', code: 'INVALID_PHASE' });
+  if (phase !== 'shedding') {
+    socket.emit('error', { message: 'Not in shedding phase', code: 'INVALID_PHASE' });
     return;
   }
+
+  const { card: cardData } = validation.data;
+  const card: Card = { suit: cardData.suit, rank: cardData.rank };
+
+  const result = gameManager.playSheddingCard(position, card);
 
   if (!result.success) {
     socket.emit('play-rejected', {
@@ -1454,14 +1591,28 @@ function handleSkitgubbePlay(
   }
 
   // Broadcast the play
-  io.to(roomId).emit('card-played', {
+  io.to(roomId).emit('skitgubbe-trick-card', {
     player: position,
     card,
-    faceDown: false,
   });
 
-  // Handle phase 2 specific events
-  if (phase === 'phase2' && 'playerOut' in result && result.playerOut) {
+  // Handle must pick up
+  if (result.mustPickUp) {
+    io.to(roomId).emit('skitgubbe-pickup', {
+      player: position,
+      cardsPickedUp: 0, // Already handled
+    });
+  }
+
+  // Handle trick complete
+  if (result.trickComplete && result.trickWinner) {
+    io.to(roomId).emit('skitgubbe-trick-result', {
+      winner: result.trickWinner,
+    });
+  }
+
+  // Handle player out
+  if (result.playerOut) {
     io.to(roomId).emit('skitgubbe-player-out', { player: position });
 
     if (result.gameEnd && result.loser) {
@@ -1473,25 +1624,13 @@ function handleSkitgubbePlay(
     }
   }
 
-  // Handle phase 1 trick completion and phase transition
-  if (phase === 'phase1' && 'trickComplete' in result && result.trickComplete) {
-    io.to(roomId).emit('trick-complete', {
-      winner: result.trickWinner!,
-      trickNumber: 0,
-    });
-
-    if (result.phase2Starts) {
-      io.to(roomId).emit('skitgubbe-phase-change', { phase: 'phase2' });
-    }
-  }
-
   broadcastGameStateForGame(io, roomId, gameManager, 'skitgubbe');
   broadcastTurnForGame(io, roomId, gameManager, 'skitgubbe');
   processSkitgubbeBotTurns(io, roomId, gameManager);
 }
 
 /**
- * Handle Skitgubbe pile pickup
+ * Handle Skitgubbe pile pickup (Phase 2)
  */
 function handleSkitgubbePickup(socket: GameSocket, io: GameServer): void {
   const roomId = socket.data.roomId;
@@ -1505,6 +1644,12 @@ function handleSkitgubbePickup(socket: GameSocket, io: GameServer): void {
   const gameManager = activeGames.get(roomId);
   if (!gameManager || !(gameManager instanceof SkitgubbeGameManager)) {
     socket.emit('error', { message: 'Skitgubbe game not found', code: 'GAME_NOT_FOUND' });
+    return;
+  }
+
+  const phase = gameManager.getPhase();
+  if (phase !== 'shedding') {
+    socket.emit('error', { message: 'Not in shedding phase', code: 'INVALID_PHASE' });
     return;
   }
 
@@ -1680,6 +1825,7 @@ async function processSkitgubbeBotTurns(
   if (!room) return;
 
   let currentPlayer = gameManager.getCurrentPlayer();
+  const phase = gameManager.getPhase();
 
   while (currentPlayer) {
     const player = room.players.get(currentPlayer);
@@ -1693,50 +1839,97 @@ async function processSkitgubbeBotTurns(
     const move = gameManager.getBotMove(currentPlayer);
     if (!move) break;
 
-    if (move.action === 'pickup') {
-      const result = gameManager.pickUpPile(currentPlayer);
-      if (result.success) {
-        io.to(roomId).emit('skitgubbe-pickup', {
-          player: currentPlayer,
-          cardsPickedUp: result.cardsPickedUp,
-        });
-      }
-    } else {
-      const phase = gameManager.getPhase();
-      let result;
-      if (phase === 'phase1') {
-        result = gameManager.playCardPhase1(currentPlayer, move.card);
-      } else {
-        result = gameManager.playCardPhase2(currentPlayer, move.card);
-      }
+    if (gameManager.getPhase() === 'collection') {
+      // Phase 1: Collection
+      if (move.action === 'draw') {
+        const result = gameManager.drawCard(currentPlayer);
+        if (result.success) {
+          io.to(roomId).emit('skitgubbe-draw', {
+            player: currentPlayer,
+            isLastCard: result.isLastCard || false,
+          });
 
-      if (result.success) {
-        io.to(roomId).emit('card-played', {
-          player: currentPlayer,
-          card: move.card,
-          faceDown: false,
-        });
-
-        if (phase === 'phase2' && 'playerOut' in result && result.playerOut) {
-          io.to(roomId).emit('skitgubbe-player-out', { player: currentPlayer });
-          if (result.gameEnd && result.loser) {
-            io.to(roomId).emit('game-ended', {
-              finalScores: { north: 0, east: 0, south: 0, west: 0 },
-              loser: result.loser,
+          if (result.phaseChange) {
+            const trumpInfo = gameManager.getTrumpInfo();
+            io.to(roomId).emit('skitgubbe-phase-change', {
+              phase: 'shedding',
+              trumpSuit: trumpInfo.trumpSuit,
+              trumpCard: trumpInfo.trumpCard,
             });
-            return;
           }
         }
+      } else if (move.action === 'duel' && move.card) {
+        const clientState = gameManager.getClientState(currentPlayer);
+        const result = gameManager.playDuelCard(currentPlayer, move.card);
 
-        if (phase === 'phase1' && 'trickComplete' in result && result.trickComplete) {
-          io.to(roomId).emit('trick-complete', {
-            winner: result.trickWinner!,
-            trickNumber: 0,
+        if (result.success) {
+          io.to(roomId).emit('skitgubbe-duel-card', {
+            player: currentPlayer,
+            card: move.card,
+            isLeader: !clientState.currentDuel || !clientState.currentDuel.leaderCard,
           });
-          if (result.phase2Starts) {
-            io.to(roomId).emit('skitgubbe-phase-change', { phase: 'phase2' });
+
+          if (result.duelComplete) {
+            const newClientState = gameManager.getClientState(currentPlayer);
+            io.to(roomId).emit('skitgubbe-duel-result', {
+              winner: result.winner || null,
+              isTie: result.isTie || false,
+              tiePileCount: newClientState.tiePileCount,
+            });
           }
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          if (result.phaseChange) {
+            const trumpInfo = gameManager.getTrumpInfo();
+            io.to(roomId).emit('skitgubbe-phase-change', {
+              phase: 'shedding',
+              trumpSuit: trumpInfo.trumpSuit,
+              trumpCard: trumpInfo.trumpCard,
+            });
+          }
+        }
+      }
+    } else if (gameManager.getPhase() === 'shedding') {
+      // Phase 2: Shedding
+      if (move.action === 'pickup') {
+        const result = gameManager.pickUpPile(currentPlayer);
+        if (result.success) {
+          io.to(roomId).emit('skitgubbe-pickup', {
+            player: currentPlayer,
+            cardsPickedUp: result.cardsPickedUp,
+          });
+        }
+      } else if (move.action === 'play' && move.card) {
+        const result = gameManager.playSheddingCard(currentPlayer, move.card);
+
+        if (result.success) {
+          io.to(roomId).emit('skitgubbe-trick-card', {
+            player: currentPlayer,
+            card: move.card,
+          });
+
+          if (result.mustPickUp) {
+            io.to(roomId).emit('skitgubbe-pickup', {
+              player: currentPlayer,
+              cardsPickedUp: 0,
+            });
+          }
+
+          if (result.trickComplete && result.trickWinner) {
+            io.to(roomId).emit('skitgubbe-trick-result', {
+              winner: result.trickWinner,
+            });
+          }
+
+          if (result.playerOut) {
+            io.to(roomId).emit('skitgubbe-player-out', { player: currentPlayer });
+            if (result.gameEnd && result.loser) {
+              io.to(roomId).emit('game-ended', {
+                finalScores: { north: 0, east: 0, south: 0, west: 0 },
+                loser: result.loser,
+              });
+              return;
+            }
+          }
         }
       }
     }

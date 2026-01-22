@@ -1,8 +1,8 @@
-import type { Card, Suit } from '@fkthepope/shared';
-import type { SkitgubbeState, SkitgubbePlayedCard } from './state.js';
+import type { Card, Suit, PlayerPosition } from '@fkthepope/shared';
+import type { SkitgubbeState, TrickCard } from './state.js';
 
 /**
- * Rank values for card comparison
+ * Rank values for card comparison (Ace high, 2 low)
  */
 const RANK_VALUES: Record<string, number> = {
   '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8,
@@ -17,146 +17,218 @@ export function getRankValue(card: Card): number {
 }
 
 /**
- * Compare two cards (for trick resolution)
- * Returns positive if card1 wins, negative if card2 wins
+ * Legal moves result for Phase 1 (Collection)
  */
-export function compareCards(card1: Card, card2: Card, trumpSuit: Suit | null): number {
-  const isTrump1 = card1.suit === trumpSuit;
-  const isTrump2 = card2.suit === trumpSuit;
-
-  // Trump beats non-trump
-  if (isTrump1 && !isTrump2) return 1;
-  if (!isTrump1 && isTrump2) return -1;
-
-  // Same suit or both trump: compare ranks
-  if (card1.suit === card2.suit) {
-    return getRankValue(card1) - getRankValue(card2);
-  }
-
-  // Different suits (non-trump): first card wins
-  return 1;
+export interface CollectionLegalMoves {
+  phase: 'collection';
+  canPlayCards: Card[];  // All cards in hand are playable
+  canDraw: boolean;       // Can draw from pile instead
 }
 
 /**
- * Phase 1 legal moves
- * - Leading: Can play any card
- * - Following: Can play any card (no suit restrictions in Skitgubbe)
+ * Legal moves result for Phase 2 (Shedding)
  */
-export function getPhase1LegalMoves(hand: Card[]): Card[] {
-  return hand;
+export interface SheddingLegalMoves {
+  phase: 'shedding';
+  playableCards: Card[];  // Cards that can legally be played
+  mustPickUp: boolean;    // If no legal play, must pick up
+  canLead: boolean;       // Is player leading (any card is fine)
 }
 
 /**
- * Check if a play is legal in Phase 1
+ * Check if a card can beat the current pile top in shedding phase
+ * No trump in Skitgubbe - must follow suit and beat by rank
  */
-export function isLegalPhase1Play(
+export function canBeatPile(
   card: Card,
-  hand: Card[]
-): { legal: boolean; reason?: string } {
-  const inHand = hand.some(c => c.suit === card.suit && c.rank === card.rank);
-  if (!inHand) {
-    return { legal: false, reason: 'Card not in hand' };
+  pileTopCard: Card | null,
+  leadSuit: Suit | null
+): boolean {
+  // Empty pile - any card works
+  if (!pileTopCard || !leadSuit) {
+    return true;
   }
-  return { legal: true };
+
+  // Must follow suit to beat - if not following suit, can't beat
+  if (card.suit !== pileTopCard.suit) {
+    return false;
+  }
+
+  // Same suit: must be higher to beat
+  return getRankValue(card) > getRankValue(pileTopCard);
 }
 
 /**
- * Phase 2 legal moves
- * - Must beat the top card of the pile (higher same suit or trump)
- * - Or can pick up the pile
+ * Check if player has any cards of the given suit
  */
-export function getPhase2LegalMoves(
+function hasCardsOfSuit(hand: Card[], suit: Suit): boolean {
+  return hand.some(c => c.suit === suit);
+}
+
+/**
+ * Get legal moves for collection phase (Phase 1)
+ * In collection phase, any card can be played, and drawing is allowed
+ */
+export function getCollectionLegalMoves(
   hand: Card[],
-  pileTopCard: Card | null,
-  trumpSuit: Suit
-): { playableCards: Card[]; canPickUp: boolean } {
-  if (!pileTopCard) {
-    // Empty pile: can play any card
-    return { playableCards: hand, canPickUp: false };
-  }
-
-  const playableCards = hand.filter(card => canBeatCard(card, pileTopCard, trumpSuit));
-
+  drawPileCount: number
+): CollectionLegalMoves {
   return {
-    playableCards,
-    canPickUp: true, // Can always pick up the pile if can't (or don't want to) beat
+    phase: 'collection',
+    canPlayCards: [...hand],  // All cards are playable
+    canDraw: drawPileCount > 0,
   };
 }
 
 /**
- * Check if one card can beat another
+ * Get legal moves for shedding phase (Phase 2)
+ * Must follow suit if possible
+ * If can't follow suit, can play any card but can't beat
+ * If can't beat, must pick up
  */
-export function canBeatCard(playCard: Card, targetCard: Card, trumpSuit: Suit): boolean {
-  // Trump beats non-trump
-  if (playCard.suit === trumpSuit && targetCard.suit !== trumpSuit) {
-    return true;
+export function getSheddingLegalMoves(
+  hand: Card[],
+  pile: Card[],
+  currentTrick: { cards: TrickCard[]; leadSuit: Suit } | null
+): SheddingLegalMoves {
+  // If leading (no cards in trick yet), any card is playable
+  if (!currentTrick || currentTrick.cards.length === 0) {
+    return {
+      phase: 'shedding',
+      playableCards: [...hand],
+      mustPickUp: false,
+      canLead: true,
+    };
   }
 
-  // Same suit: must be higher
-  if (playCard.suit === targetCard.suit) {
-    return getRankValue(playCard) > getRankValue(targetCard);
+  const leadSuit = currentTrick.leadSuit;
+  const pileTopCard = pile.length > 0 ? pile[pile.length - 1] ?? null : null;
+
+  // Get the highest card in the current trick to determine what we need to beat
+  let highestCard = currentTrick.cards[0]?.card;
+  if (highestCard) {
+    for (const tc of currentTrick.cards) {
+      if (canBeatPile(tc.card, highestCard, leadSuit)) {
+        highestCard = tc.card;
+      }
+    }
   }
 
-  // Different non-trump suits: cannot beat
-  return false;
+  const cardToBeat = highestCard || pileTopCard;
+
+  // If we have cards of the lead suit, we must follow suit
+  const hasLeadSuit = hasCardsOfSuit(hand, leadSuit);
+
+  let playableCards: Card[] = [];
+
+  if (hasLeadSuit) {
+    // Must follow suit - find cards that can beat
+    const suitCards = hand.filter(c => c.suit === leadSuit);
+    playableCards = suitCards.filter(c =>
+      cardToBeat ? canBeatPile(c, cardToBeat, leadSuit) : true
+    );
+
+    // If we have suit cards but none can beat, we must still follow suit
+    // (and will have to pick up)
+    if (playableCards.length === 0) {
+      playableCards = suitCards;
+    }
+  } else {
+    // No lead suit - can play any card but can't beat (will have to pick up)
+    playableCards = [...hand];
+  }
+
+  // Check if any playable card can actually beat
+  const canBeat = cardToBeat ?
+    playableCards.some(c => canBeatPile(c, cardToBeat, leadSuit)) :
+    true;
+
+  return {
+    phase: 'shedding',
+    playableCards,
+    mustPickUp: !canBeat,
+    canLead: false,
+  };
 }
 
 /**
- * Check if a play is legal in Phase 2
+ * Get legal moves for the current player
  */
-export function isLegalPhase2Play(
+export function getLegalMoves(state: SkitgubbeState, position: PlayerPosition): CollectionLegalMoves | SheddingLegalMoves | null {
+  const player = state.players[position];
+  if (!player || player.isOut) return null;
+  if (state.currentPlayer !== position) return null;
+
+  if (state.phase === 'collection') {
+    return getCollectionLegalMoves(player.hand, state.drawPile.length);
+  }
+
+  if (state.phase === 'shedding') {
+    return getSheddingLegalMoves(
+      player.hand,
+      state.pile,
+      state.currentTrick
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Check if a specific card play is legal in collection phase
+ */
+export function isLegalCollectionPlay(
   card: Card,
-  hand: Card[],
-  pileTopCard: Card | null,
-  trumpSuit: Suit
+  hand: Card[]
 ): { legal: boolean; reason?: string } {
-  const inHand = hand.some(c => c.suit === card.suit && c.rank === card.rank);
-  if (!inHand) {
+  const hasCard = hand.some(c => c.suit === card.suit && c.rank === card.rank);
+  if (!hasCard) {
     return { legal: false, reason: 'Card not in hand' };
   }
-
-  if (!pileTopCard) {
-    return { legal: true };
-  }
-
-  if (!canBeatCard(card, pileTopCard, trumpSuit)) {
-    return { legal: false, reason: `Cannot beat ${pileTopCard.rank} of ${pileTopCard.suit}` };
-  }
-
   return { legal: true };
 }
 
 /**
- * Check if two cards are equal rank (for stunsa/bounce detection)
+ * Check if a specific card play is legal in shedding phase
  */
-export function isStunsa(card1: Card, card2: Card): boolean {
-  return RANK_VALUES[card1.rank] === RANK_VALUES[card2.rank];
-}
-
-/**
- * Resolve Phase 1 trick - determine winner
- * Note: Phase 1 does NOT use trump - highest card wins.
- * If cards are equal rank (stunsa), returns null indicating a bounce.
- */
-export function resolvePhase1Trick(
-  cards: SkitgubbePlayedCard[],
-  _trumpSuit: Suit | null // Unused in Phase 1 - trump only applies in Phase 2
-): SkitgubbePlayedCard['playedBy'] | null {
-  if (cards.length !== 2) {
-    throw new Error('Phase 1 trick must have exactly 2 cards');
+export function isLegalSheddingPlay(
+  card: Card,
+  hand: Card[],
+  pile: Card[],
+  currentTrick: { cards: TrickCard[]; leadSuit: Suit } | null
+): { legal: boolean; reason?: string; mustPickUp?: boolean } {
+  const hasCard = hand.some(c => c.suit === card.suit && c.rank === card.rank);
+  if (!hasCard) {
+    return { legal: false, reason: 'Card not in hand' };
   }
 
-  const [first, second] = cards;
+  const legalMoves = getSheddingLegalMoves(hand, pile, currentTrick);
 
-  // Check for stunsa (bounce) - equal ranks
-  if (isStunsa(first!.card, second!.card)) {
-    return null; // Indicates a stunsa - cards stay, same player leads again
+  const isPlayable = legalMoves.playableCards.some(
+    c => c.suit === card.suit && c.rank === card.rank
+  );
+
+  if (!isPlayable) {
+    return { legal: false, reason: 'Must follow suit' };
   }
 
-  // In Phase 1, no trump - pure rank comparison
-  // Higher card wins regardless of suit
-  const rank1 = getRankValue(first!.card);
-  const rank2 = getRankValue(second!.card);
+  // Check if this play will require picking up
+  if (currentTrick && currentTrick.cards.length > 0) {
+    const leadSuit = currentTrick.leadSuit;
+    let highestCard = currentTrick.cards[0]?.card;
+    if (highestCard) {
+      for (const tc of currentTrick.cards) {
+        if (canBeatPile(tc.card, highestCard, leadSuit)) {
+          highestCard = tc.card;
+        }
+      }
+    }
 
-  return rank1 >= rank2 ? first!.playedBy : second!.playedBy;
+    const cardToBeat = highestCard;
+    if (cardToBeat && !canBeatPile(card, cardToBeat, leadSuit)) {
+      return { legal: true, mustPickUp: true };
+    }
+  }
+
+  return { legal: true };
 }

@@ -71,7 +71,10 @@ export type ClientToServerEvents = {
   'play-card': (data: { card: Card; faceDown: boolean }) => void;
   'continue-game': () => void;
 
-  // Skitgubbe events
+  // Skitgubbe events - Phase 1 (Collection)
+  'skitgubbe-duel': (data: { card: Card }) => void;
+  'skitgubbe-draw': () => void;
+  // Skitgubbe events - Phase 2 (Shedding)
   'skitgubbe-play': (data: { card: Card }) => void;
   'skitgubbe-pickup': () => void;
 
@@ -133,7 +136,12 @@ export type ServerToClientEvents = {
   'game-ended': (data: { finalScores: Record<PlayerPosition, number>; winner?: PlayerPosition; loser?: PlayerPosition }) => void;
 
   // Skitgubbe-specific events
-  'skitgubbe-phase-change': (data: { phase: 'phase1' | 'phase2' }) => void;
+  'skitgubbe-duel-card': (data: { player: PlayerPosition; card: Card; isLeader: boolean }) => void;
+  'skitgubbe-duel-result': (data: { winner: PlayerPosition | null; isTie: boolean; tiePileCount: number }) => void;
+  'skitgubbe-draw': (data: { player: PlayerPosition; isLastCard: boolean }) => void;
+  'skitgubbe-phase-change': (data: { phase: 'collection' | 'shedding' | 'game_end'; trumpSuit: string | null; trumpCard: Card | null }) => void;
+  'skitgubbe-trick-card': (data: { player: PlayerPosition; card: Card }) => void;
+  'skitgubbe-trick-result': (data: { winner: PlayerPosition }) => void;
   'skitgubbe-pickup': (data: { player: PlayerPosition; cardsPickedUp: number }) => void;
   'skitgubbe-player-out': (data: { player: PlayerPosition }) => void;
 
@@ -147,7 +155,7 @@ export type ServerToClientEvents = {
   'waiting-for': (data: { player: PlayerPosition }) => void;
 
   // Play events
-  'card-played': (data: { player: PlayerPosition; card: Card; faceDown: boolean }) => void;
+  'card-played': (data: { player: PlayerPosition; card: Card; faceDown: boolean; source?: 'hand' | 'faceUp' | 'faceDown' }) => void;
   'play-rejected': (data: { violation: RuleViolation }) => void;
 
   // Trick events

@@ -8,20 +8,26 @@ const {
   toClientSkitgubbeState,
   skitgubbeReducer,
   dealSkitgubbe,
-  getPhase1LegalMoves,
-  getPhase2LegalMoves,
-  isLegalPhase1Play,
-  isLegalPhase2Play,
-  resolvePhase1Trick,
+  getLegalMoves,
+  getCollectionLegalMoves,
+  getSheddingLegalMoves,
+  isLegalCollectionPlay,
+  isLegalSheddingPlay,
   getRankValue,
-  canBeatCard,
+  canBeatPile,
 } = skitgubbe;
 
 type SkitgubbeState = skitgubbe.SkitgubbeState;
 type ClientSkitgubbeState = skitgubbe.ClientSkitgubbeState;
+type CollectionLegalMoves = skitgubbe.CollectionLegalMoves;
+type SheddingLegalMoves = skitgubbe.SheddingLegalMoves;
 
 /**
  * Manages a Skitgubbe game instance
+ *
+ * Skitgubbe has two phases:
+ * Phase 1 (Collection): 2-card duels to collect strong cards
+ * Phase 2 (Shedding): Get rid of cards by following suit (no trump)
  */
 export class SkitgubbeGameManager implements BaseGameManager {
   readonly gameType: GameType = 'skitgubbe';
@@ -53,25 +59,159 @@ export class SkitgubbeGameManager implements BaseGameManager {
   }
 
   /**
-   * Start a new hand
+   * Start the game - deal cards to all players
+   * Note: Skitgubbe has no trump, but interface requires a return value
    */
   startHand(): { trumpSuit: Suit; trumpCard: Card } {
-    const { hands, stock, trumpCard } = dealSkitgubbe(this.state.playerOrder, this.seed);
+    const { hands, drawPile } = dealSkitgubbe(this.state.playerOrder, this.seed);
 
     this.state = skitgubbeReducer(this.state, {
       type: 'START_GAME',
-      hands,
-      stock,
-      trumpCard,
+      deal: hands,
+      drawPile,
     });
 
-    return { trumpSuit: trumpCard.suit, trumpCard };
+    // Skitgubbe has no trump - return dummy values for interface compatibility
+    const dummyCard: Card = { suit: 'spades', rank: 'A' };
+    return { trumpSuit: 'spades', trumpCard: dummyCard };
   }
 
   /**
-   * Play a card in Phase 1 (trick-taking)
+   * Phase 1: Play a card in a duel
    */
-  playCardPhase1(
+  playDuelCard(
+    position: PlayerPosition,
+    card: Card
+  ): {
+    success: boolean;
+    error?: string;
+    duelComplete?: boolean;
+    winner?: PlayerPosition | null;
+    isTie?: boolean;
+    phaseChange?: boolean;
+  } {
+    if (this.state.phase !== 'collection') {
+      return { success: false, error: 'Not in collection phase' };
+    }
+
+    if (this.state.currentPlayer !== position) {
+      return { success: false, error: 'Not your turn' };
+    }
+
+    const player = this.state.players[position];
+    if (!player) {
+      return { success: false, error: 'Player not found' };
+    }
+
+    // Check if card is in hand
+    const check = isLegalCollectionPlay(card, player.hand);
+    if (!check.legal) {
+      return { success: false, error: check.reason };
+    }
+
+    // Play the card
+    this.state = skitgubbeReducer(this.state, {
+      type: 'PLAY_DUEL_CARD',
+      position,
+      card,
+    });
+
+    // Check if duel is complete (both cards played)
+    if (this.state.currentDuel?.leaderCard && this.state.currentDuel?.responderCard) {
+      // Resolve the duel
+      const prevTiePileCount = this.state.tiePile.length;
+      this.state = skitgubbeReducer(this.state, { type: 'RESOLVE_DUEL' });
+
+      // Check for tie
+      const isTie = this.state.tiePile.length > prevTiePileCount;
+
+      // Check if it's time to transition to shedding phase
+      const shouldTransition = this.shouldTransitionToShedding();
+      if (shouldTransition) {
+        this.state = skitgubbeReducer(this.state, { type: 'START_SHEDDING' });
+        return {
+          success: true,
+          duelComplete: true,
+          winner: isTie ? null : this.state.currentPlayer,
+          isTie,
+          phaseChange: true,
+        };
+      }
+
+      return {
+        success: true,
+        duelComplete: true,
+        winner: isTie ? null : this.state.currentPlayer,
+        isTie,
+      };
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * Phase 1: Draw a card instead of playing
+   */
+  drawCard(position: PlayerPosition): {
+    success: boolean;
+    error?: string;
+    drawnCard?: Card;
+    isLastCard?: boolean;
+    phaseChange?: boolean;
+  } {
+    if (this.state.phase !== 'collection') {
+      return { success: false, error: 'Not in collection phase' };
+    }
+
+    if (this.state.currentPlayer !== position) {
+      return { success: false, error: 'Not your turn' };
+    }
+
+    if (this.state.drawPile.length === 0) {
+      return { success: false, error: 'Draw pile is empty' };
+    }
+
+    const drawnCard = this.state.drawPile[0]!;
+    const isLastCard = this.state.drawPile.length === 1;
+
+    this.state = skitgubbeReducer(this.state, {
+      type: 'DRAW_CARD',
+      position,
+    });
+
+    // Check if we should transition to shedding
+    if (this.shouldTransitionToShedding()) {
+      this.state = skitgubbeReducer(this.state, { type: 'START_SHEDDING' });
+      return { success: true, drawnCard, isLastCard, phaseChange: true };
+    }
+
+    return { success: true, drawnCard, isLastCard };
+  }
+
+  /**
+   * Check if collection phase should end
+   * Ends when draw pile is empty AND all players have played out their hands
+   */
+  private shouldTransitionToShedding(): boolean {
+    if (this.state.drawPile.length > 0) {
+      return false;
+    }
+
+    // Check if any player has cards in hand (not yet collected)
+    for (const pos of this.state.playerOrder) {
+      const player = this.state.players[pos];
+      if (player && player.hand.length > 0) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Phase 2: Play a card in shedding
+   */
+  playSheddingCard(
     position: PlayerPosition,
     card: Card
   ): {
@@ -79,12 +219,13 @@ export class SkitgubbeGameManager implements BaseGameManager {
     error?: string;
     trickComplete?: boolean;
     trickWinner?: PlayerPosition;
-    stunsa?: boolean; // Bounce - equal cards, same player leads again
-    drawNeeded?: boolean;
-    phase2Starts?: boolean;
+    mustPickUp?: boolean;
+    playerOut?: boolean;
+    gameEnd?: boolean;
+    loser?: PlayerPosition;
   } {
-    if (this.state.phase !== 'phase1') {
-      return { success: false, error: 'Not in phase 1' };
+    if (this.state.phase !== 'shedding') {
+      return { success: false, error: 'Not in shedding phase' };
     }
 
     if (this.state.currentPlayer !== position) {
@@ -97,126 +238,66 @@ export class SkitgubbeGameManager implements BaseGameManager {
     }
 
     // Check if play is legal
-    const check = isLegalPhase1Play(card, player.hand);
+    const check = isLegalSheddingPlay(
+      card,
+      player.hand,
+      this.state.pile,
+      this.state.currentTrick
+    );
+
     if (!check.legal) {
       return { success: false, error: check.reason };
     }
 
     // Play the card
     this.state = skitgubbeReducer(this.state, {
-      type: 'PLAY_CARD_PHASE1',
+      type: 'PLAY_TRICK_CARD',
       position,
       card,
     });
 
-    // Check if trick is complete (2 cards)
-    if (this.state.currentTrick && this.state.currentTrick.cards.length >= 2) {
-      const winner = resolvePhase1Trick(
-        this.state.currentTrick.cards,
-        this.state.trumpSuit
-      );
+    // Check if this play triggers a pickup
+    if (check.mustPickUp) {
+      this.state = skitgubbeReducer(this.state, {
+        type: 'PICK_UP_PILE',
+        position,
+      });
+      return { success: true, mustPickUp: true };
+    }
 
-      // Check for stunsa (bounce) - winner is null when cards are equal
-      if (winner === null) {
-        this.state = skitgubbeReducer(this.state, { type: 'STUNSA' });
+    // Check if trick is complete
+    const activePlayerCount = this.countActivePlayers();
+    if (this.state.currentTrick && this.state.currentTrick.cards.length >= activePlayerCount) {
+      // Resolve the trick
+      this.state = skitgubbeReducer(this.state, { type: 'RESOLVE_TRICK' });
+      const trickWinner = this.state.currentPlayer!;
 
-        // Draw cards after stunsa
-        this.state = skitgubbeReducer(this.state, { type: 'DRAW_CARDS' });
+      // Check if winner is now out of cards
+      const winnerPlayer = this.state.players[trickWinner];
+      if (winnerPlayer && winnerPlayer.hand.length === 0) {
+        this.state = skitgubbeReducer(this.state, {
+          type: 'PLAYER_OUT',
+          position: trickWinner,
+        });
 
-        // Check if phase 2 should start (stock empty)
-        if (this.state.stock.length === 0) {
-          this.state = skitgubbeReducer(this.state, { type: 'START_PHASE2' });
+        if (this.state.phase === 'game_end') {
           return {
             success: true,
-            trickComplete: false, // Stunsa means trick isn't really complete
-            stunsa: true,
-            phase2Starts: true,
+            trickComplete: true,
+            trickWinner,
+            playerOut: true,
+            gameEnd: true,
+            loser: this.state.loser!,
           };
         }
 
-        return {
-          success: true,
-          trickComplete: false,
-          stunsa: true,
-          drawNeeded: true,
-        };
+        return { success: true, trickComplete: true, trickWinner, playerOut: true };
       }
 
-      this.state = skitgubbeReducer(this.state, {
-        type: 'COMPLETE_TRICK',
-        winner,
-      });
-
-      // Draw cards
-      this.state = skitgubbeReducer(this.state, { type: 'DRAW_CARDS' });
-
-      // Check if phase 2 should start (stock empty)
-      if (this.state.stock.length === 0) {
-        this.state = skitgubbeReducer(this.state, { type: 'START_PHASE2' });
-        return {
-          success: true,
-          trickComplete: true,
-          trickWinner: winner,
-          phase2Starts: true,
-        };
-      }
-
-      return {
-        success: true,
-        trickComplete: true,
-        trickWinner: winner,
-        drawNeeded: true,
-      };
+      return { success: true, trickComplete: true, trickWinner };
     }
 
-    return { success: true };
-  }
-
-  /**
-   * Play a card in Phase 2 (shedding)
-   */
-  playCardPhase2(
-    position: PlayerPosition,
-    card: Card
-  ): {
-    success: boolean;
-    error?: string;
-    playerOut?: boolean;
-    gameEnd?: boolean;
-    loser?: PlayerPosition;
-  } {
-    if (this.state.phase !== 'phase2') {
-      return { success: false, error: 'Not in phase 2' };
-    }
-
-    if (this.state.currentPlayer !== position) {
-      return { success: false, error: 'Not your turn' };
-    }
-
-    const player = this.state.players[position];
-    if (!player || !this.state.pile) {
-      return { success: false, error: 'Invalid state' };
-    }
-
-    // Check if play is legal
-    const check = isLegalPhase2Play(
-      card,
-      player.hand,
-      this.state.pile.topCard,
-      this.state.trumpSuit!
-    );
-    if (!check.legal) {
-      return { success: false, error: check.reason };
-    }
-
-    // Play the card
-    this.state = skitgubbeReducer(this.state, {
-      type: 'PLAY_CARD_PHASE2',
-      position,
-      card,
-    });
-
-    // Check if player is now out (empty hand)
+    // Check if current player is now out of cards
     const updatedPlayer = this.state.players[position];
     if (updatedPlayer && updatedPlayer.hand.length === 0) {
       this.state = skitgubbeReducer(this.state, {
@@ -240,26 +321,28 @@ export class SkitgubbeGameManager implements BaseGameManager {
   }
 
   /**
-   * Pick up the pile in Phase 2
+   * Phase 2: Pick up the pile
    */
   pickUpPile(position: PlayerPosition): {
     success: boolean;
     error?: string;
     cardsPickedUp: number;
   } {
-    if (this.state.phase !== 'phase2') {
-      return { success: false, error: 'Not in phase 2', cardsPickedUp: 0 };
+    if (this.state.phase !== 'shedding') {
+      return { success: false, error: 'Not in shedding phase', cardsPickedUp: 0 };
     }
 
     if (this.state.currentPlayer !== position) {
       return { success: false, error: 'Not your turn', cardsPickedUp: 0 };
     }
 
-    if (!this.state.pile || this.state.pile.cards.length === 0) {
+    const pileCards = this.state.pile.length;
+    const trickCards = this.state.currentTrick?.cards.length ?? 0;
+    const cardsPickedUp = pileCards + trickCards;
+
+    if (cardsPickedUp === 0) {
       return { success: false, error: 'No cards to pick up', cardsPickedUp: 0 };
     }
-
-    const cardsPickedUp = this.state.pile.cards.length;
 
     this.state = skitgubbeReducer(this.state, {
       type: 'PICK_UP_PILE',
@@ -267,6 +350,16 @@ export class SkitgubbeGameManager implements BaseGameManager {
     });
 
     return { success: true, cardsPickedUp };
+  }
+
+  /**
+   * Count active players (not out)
+   */
+  private countActivePlayers(): number {
+    return this.state.playerOrder.filter(pos => {
+      const player = this.state.players[pos];
+      return player && !player.isOut;
+    }).length;
   }
 
   /**
@@ -312,37 +405,146 @@ export class SkitgubbeGameManager implements BaseGameManager {
   }
 
   /**
+   * Get trump info - Skitgubbe has no trump
+   */
+  getTrumpInfo(): { trumpSuit: Suit | null; trumpCard: Card | null } {
+    return {
+      trumpSuit: null,
+      trumpCard: null,
+    };
+  }
+
+  /**
    * Get bot move
    */
-  getBotMove(position: PlayerPosition): { card: Card; action: 'play' | 'pickup' } | null {
+  getBotMove(position: PlayerPosition): {
+    action: 'duel' | 'draw' | 'play' | 'pickup';
+    card?: Card;
+  } | null {
     const player = this.state.players[position];
-    if (!player || !player.isBot || player.hand.length === 0) return null;
+    if (!player || !player.isBot) return null;
+    if (this.state.currentPlayer !== position) return null;
 
-    if (this.state.phase === 'phase1') {
-      // Phase 1: Play any card (simple strategy: play highest)
-      const hand = [...player.hand].sort((a, b) => getRankValue(b) - getRankValue(a));
-      return { card: hand[0]!, action: 'play' };
+    if (this.state.phase === 'collection') {
+      return this.getCollectionBotMove(position);
     }
 
-    if (this.state.phase === 'phase2' && this.state.pile) {
-      const { playableCards, canPickUp } = getPhase2LegalMoves(
-        player.hand,
-        this.state.pile.topCard,
-        this.state.trumpSuit!
-      );
+    if (this.state.phase === 'shedding') {
+      return this.getSheddingBotMove(position);
+    }
 
-      if (playableCards.length > 0) {
-        // Play lowest card that can beat
-        const sorted = [...playableCards].sort((a, b) => getRankValue(a) - getRankValue(b));
-        return { card: sorted[0]!, action: 'play' };
+    return null;
+  }
+
+  /**
+   * Bot move in collection phase
+   */
+  private getCollectionBotMove(position: PlayerPosition): {
+    action: 'duel' | 'draw';
+    card?: Card;
+  } | null {
+    const player = this.state.players[position];
+    if (!player) return null;
+
+    const legalMoves = getCollectionLegalMoves(player.hand, this.state.drawPile.length);
+
+    // Strategy: Save high cards (A, K, Q), draw if we'd have to play them
+    // When responding: try to win with minimal card, or sacrifice lowest
+    // When leading: play medium cards to probe
+
+    const isResponding = this.state.currentDuel?.responder === position;
+    const leaderCard = this.state.currentDuel?.leaderCard;
+
+    const sortedHand = [...player.hand].sort((a, b) => getRankValue(a) - getRankValue(b));
+
+    if (isResponding && leaderCard) {
+      // Responding to a duel
+      const leaderValue = getRankValue(leaderCard);
+
+      // Find cards that can win
+      const winningCards = sortedHand.filter(c => getRankValue(c) > leaderValue);
+
+      if (winningCards.length > 0) {
+        // Win with minimal card (save high cards)
+        return { action: 'duel', card: winningCards[0] };
       }
 
-      if (canPickUp) {
-        // Must pick up - return a dummy card with pickup action
-        return { card: player.hand[0]!, action: 'pickup' };
+      // Can't win - sacrifice lowest card
+      if (sortedHand.length > 0) {
+        return { action: 'duel', card: sortedHand[0] };
+      }
+
+      // No cards, draw
+      if (legalMoves.canDraw) {
+        return { action: 'draw' };
+      }
+    } else {
+      // Leading a duel
+      // Don't lead with high cards (A, K, Q) unless we have to
+      const highCards = sortedHand.filter(c => getRankValue(c) >= 12);
+      const mediumCards = sortedHand.filter(c => getRankValue(c) >= 7 && getRankValue(c) < 12);
+      const lowCards = sortedHand.filter(c => getRankValue(c) < 7);
+
+      // Prefer to draw if we only have high cards
+      if (highCards.length === player.hand.length && legalMoves.canDraw) {
+        return { action: 'draw' };
+      }
+
+      // Play medium card to probe
+      if (mediumCards.length > 0) {
+        return { action: 'duel', card: mediumCards[0] };
+      }
+
+      // Play low card
+      if (lowCards.length > 0) {
+        return { action: 'duel', card: lowCards[0] };
+      }
+
+      // Must play high card
+      if (sortedHand.length > 0) {
+        return { action: 'duel', card: sortedHand[0] };
+      }
+
+      // Draw as fallback
+      if (legalMoves.canDraw) {
+        return { action: 'draw' };
       }
     }
 
     return null;
+  }
+
+  /**
+   * Bot move in shedding phase
+   */
+  private getSheddingBotMove(position: PlayerPosition): {
+    action: 'play' | 'pickup';
+    card?: Card;
+  } | null {
+    const player = this.state.players[position];
+    if (!player) return null;
+
+    const legalMoves = getSheddingLegalMoves(
+      player.hand,
+      this.state.pile,
+      this.state.currentTrick
+    );
+
+    // Must pick up if no legal plays
+    if (legalMoves.mustPickUp || legalMoves.playableCards.length === 0) {
+      return { action: 'pickup' };
+    }
+
+    const playable = legalMoves.playableCards;
+
+    // Sort by value (prefer to play low cards to get rid of them)
+    const sorted = [...playable].sort((a, b) => getRankValue(a) - getRankValue(b));
+
+    // Play lowest playable card
+    if (sorted.length > 0) {
+      return { action: 'play', card: sorted[0] };
+    }
+
+    return { action: 'pickup' };
   }
 }

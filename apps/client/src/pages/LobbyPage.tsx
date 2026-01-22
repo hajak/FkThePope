@@ -458,10 +458,15 @@ export function LobbyPage() {
 
         <div className="room-list">
           <h3>Available Rooms</h3>
-          {rooms.length === 0 ? (
-            <p className="no-rooms">No rooms available. Create one!</p>
-          ) : (
-            rooms.map((room) => {
+          {(() => {
+            // Filter out full rooms that are in progress (can't join them)
+            const joinableRooms = rooms.filter(
+              room => !(room.status === 'playing' && room.playerCount >= room.maxPlayers)
+            );
+            if (joinableRooms.length === 0) {
+              return <p className="no-rooms">No rooms available. Create one!</p>;
+            }
+            return joinableRooms.map((room) => {
               const gameConfig = GAME_CONFIGS[room.gameType];
               return (
                 <div key={room.id} className="room-item">
@@ -475,14 +480,14 @@ export function LobbyPage() {
                   <button
                     className="btn-secondary"
                     onClick={() => handleJoinRoom(room.id)}
-                    disabled={room.playerCount >= room.maxPlayers || room.status === 'playing'}
+                    disabled={room.playerCount >= room.maxPlayers}
                   >
-                    {room.status === 'playing' ? 'In Progress' : 'Join'}
+                    {room.status === 'playing' ? 'Join Game' : 'Join'}
                   </button>
                 </div>
               );
-            })
-          )}
+            });
+          })()}
         </div>
       </div>
     </div>
