@@ -9,106 +9,8 @@
   background: linear-gradient(135deg, #1a2e1a 0%, #163e16 50%, #1a2e1a 100%);
 }
 
-/* Reuse game-header styles from GamePage */
-.bridge-game-page .game-header {
-  position: relative;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 24px;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.bridge-game-page .game-logo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.bridge-game-page .game-logo h1 {
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0;
-  color: var(--color-text);
-}
-
-.bridge-game-page .logo-cards {
-  display: flex;
-  position: relative;
-  width: 36px;
-  height: 28px;
-}
-
-.bridge-game-page .logo-card {
-  position: absolute;
-  width: 22px;
-  height: 28px;
-  background: white;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 14px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.bridge-game-page .logo-card.red {
-  color: #e74c3c;
-  left: 0;
-  transform: rotate(-8deg);
-}
-
-.bridge-game-page .logo-card.black {
-  color: #1a1a2e;
-  left: 14px;
-  transform: rotate(8deg);
-}
-
-.bridge-game-page .header-center {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.bridge-game-page .header-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.bridge-game-page .header-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--color-text);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.bridge-game-page .header-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.bridge-game-page .rules-btn {
-  background: rgba(156, 136, 255, 0.15);
-  border-color: rgba(156, 136, 255, 0.4);
-  color: #9c88ff;
-}
-
-.bridge-game-page .quit-btn {
-  background: rgba(231, 76, 60, 0.15);
-  border-color: rgba(231, 76, 60, 0.4);
-  color: #e74c3c;
-}
-
-/* Contract display */
-.contract-display {
+/* Contract badge in header */
+.contract-badge {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -129,15 +31,10 @@
   font-weight: 700;
 }
 
-.contract-strain.strain-c,
 .contract-strain.strain-clubs { color: #2ecc71; }
-.contract-strain.strain-d,
 .contract-strain.strain-diamonds { color: #f39c12; }
-.contract-strain.strain-h,
 .contract-strain.strain-hearts { color: #e74c3c; }
-.contract-strain.strain-s,
 .contract-strain.strain-spades { color: #3498db; }
-.contract-strain.strain-nt,
 .contract-strain.strain-notrump { color: #fff; }
 
 .contract-by {
@@ -160,172 +57,72 @@
   color: var(--color-text);
 }
 
-/* Bridge table */
-.bridge-table {
+/* Table area - contains GameTable and overlays */
+.bridge-game-page .table-area {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 20px;
   position: relative;
 }
 
-/* Score display */
-.score-display {
+/* Score overlay - positioned in table area */
+.score-overlay {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-  justify-content: center;
-  gap: 40px;
-  margin-bottom: 20px;
+  gap: 20px;
+  z-index: 10;
 }
 
 .score-team {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 24px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 12px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 10px;
   border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .score-team.my-team {
   border-color: var(--color-accent);
-  background: rgba(76, 175, 80, 0.15);
+  background: rgba(76, 175, 80, 0.2);
 }
 
 .team-label {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--color-text);
 }
 
 .team-tricks {
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-
-/* Player seats */
-.bridge-seats {
-  display: grid;
-  grid-template-areas:
-    ". north ."
-    "west . east"
-    ". south .";
-  gap: 10px;
-  justify-content: center;
-  align-items: center;
-  margin: 20px auto;
-  max-width: 600px;
-}
-
-.bridge-seat {
-  padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  text-align: center;
-}
-
-.bridge-seat.seat-north { grid-area: north; }
-.bridge-seat.seat-east { grid-area: east; }
-.bridge-seat.seat-south { grid-area: south; }
-.bridge-seat.seat-west { grid-area: west; }
-
-.bridge-seat.current-turn {
-  border-color: var(--color-accent);
-  background: rgba(76, 175, 80, 0.15);
-  box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
-}
-
-.bridge-seat.my-seat {
-  border-color: #64b5f6;
-}
-
-.seat-label {
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--color-text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
 }
 
-.role-badge {
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 700;
-}
-
-.role-badge.declarer {
-  background: #f39c12;
-  color: #000;
-}
-
-.role-badge.dummy {
-  background: #9c88ff;
-  color: #fff;
-}
-
-.bot-badge {
-  font-size: 10px;
-  padding: 2px 6px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  color: var(--color-text-muted);
-}
-
-/* Current trick */
-.bridge-trick {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  gap: 8px;
-}
-
-.trick-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.card-mini {
-  width: 40px;
-  height: 56px;
-  background: white;
-  border-radius: 4px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.card-mini.suit-hearts,
-.card-mini.suit-diamonds { color: #e74c3c; }
-.card-mini.suit-clubs,
-.card-mini.suit-spades { color: #1a1a2e; }
-
-.card-suit {
-  font-size: 14px;
-}
-
-/* Bidding panel */
-.bidding-panel {
+/* Bidding overlay - positioned in table area */
+.bidding-overlay {
   position: absolute;
   right: 20px;
   top: 50%;
   transform: translateY(-50%);
+  z-index: 20;
+}
+
+.bidding-panel {
   width: 320px;
   max-height: 80vh;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   border-radius: 16px;
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   overflow-y: auto;
+  backdrop-filter: blur(10px);
 }
 
 .bidding-panel h3 {
@@ -442,16 +239,21 @@
   color: #e74c3c;
 }
 
-/* Dummy hand display */
-.dummy-hand-display {
-  margin-top: 20px;
+/* Dummy hand overlay - positioned in table area */
+.dummy-hand-overlay {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
   padding: 16px;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
   border-radius: 12px;
   border: 2px solid rgba(156, 136, 255, 0.3);
+  z-index: 15;
+  backdrop-filter: blur(10px);
 }
 
-.dummy-hand-display h4 {
+.dummy-hand-overlay h4 {
   margin: 0 0 12px;
   font-size: 14px;
   color: #9c88ff;
@@ -469,59 +271,15 @@
   cursor: pointer;
 }
 
-/* Hand area */
-.bridge-game-page .hand-area {
-  padding: 10px 20px 20px;
-  padding-top: 25px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
+.play-dummy-btn:hover {
+  background: #5bc45e;
 }
 
-.bridge-game-page .play-actions-container {
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.bridge-game-page .play-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.bridge-game-page .play-btn {
-  padding: 12px 32px;
-  font-size: 15px;
-  font-weight: 600;
-  border-radius: 25px;
-  background: var(--color-accent);
-  color: white;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
-}
-
-.bridge-game-page .waiting-message {
-  color: var(--color-text-muted);
-  font-size: 14px;
-  padding: 10px 20px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 20px;
-}
-
-.bridge-game-page .play-actions-placeholder {
-  color: var(--color-text-muted);
-  font-size: 14px;
-}
-
-/* Dummy message */
+/* Dummy message - when player is dummy */
 .dummy-message {
   text-align: center;
   color: var(--color-text-muted);
+  padding: 20px;
 }
 
 .dummy-hand-view {
@@ -529,135 +287,141 @@
   opacity: 0.7;
 }
 
-/* Modal styles - reuse from GamePage */
-.bridge-game-page .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  z-index: 1000;
-}
-
-.bridge-game-page .modal-content {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--color-surface);
-  border-radius: 16px;
-  padding: 32px;
-  max-width: 500px;
-  width: 90%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.bridge-game-page .modal-content h2 {
-  margin: 0 0 24px;
-  font-size: 24px;
-  text-align: center;
-  color: var(--color-text);
-}
-
-.bridge-game-page .modal-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-
-.bridge-game-page .btn-primary {
-  padding: 12px 24px;
-  background: var(--color-accent);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.bridge-game-page .btn-secondary {
-  padding: 12px 24px;
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--color-text);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.bridge-game-page .btn-danger {
-  padding: 12px 24px;
-  background: #e74c3c;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.bridge-game-page .rules-content {
-  text-align: left;
-  margin-bottom: 24px;
-}
-
-.bridge-game-page .rule-section {
-  margin-bottom: 20px;
-}
-
-.bridge-game-page .rule-section h4 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-accent);
-  margin: 0 0 8px;
-}
-
-.bridge-game-page .rule-section p,
-.bridge-game-page .rule-section ul {
-  font-size: 14px;
-  color: var(--color-text-muted);
-  line-height: 1.6;
-  margin: 0;
-}
-
-.bridge-game-page .rule-section ul {
-  padding-left: 20px;
-}
-
-.bridge-game-page .version-info {
-  text-align: center;
-  font-size: 11px;
-  color: var(--color-text-muted);
-  opacity: 0.6;
-  margin-bottom: 16px;
-}
-
-/* Responsive */
+/* Mobile styles - inherit from GamePage patterns */
 @media (max-width: 768px) {
-  .bidding-panel {
+  .bidding-overlay {
     position: fixed;
     right: 10px;
     left: 10px;
     width: auto;
-    bottom: 200px;
+    bottom: 180px;
     top: auto;
     transform: none;
     max-height: 40vh;
   }
 
-  .bridge-seats {
-    gap: 5px;
+  .bidding-panel {
+    width: auto;
+    max-height: 35vh;
   }
 
-  .bridge-seat {
-    padding: 8px 12px;
-  }
-
-  .score-display {
-    gap: 20px;
+  .score-overlay {
+    gap: 10px;
   }
 
   .score-team {
-    padding: 8px 16px;
+    padding: 6px 12px;
+  }
+
+  .team-label {
+    font-size: 10px;
+  }
+
+  .team-tricks {
+    font-size: 14px;
+  }
+
+  .dummy-hand-overlay {
+    position: fixed;
+    left: 10px;
+    top: auto;
+    bottom: 180px;
+    transform: none;
+    max-width: 160px;
+  }
+
+  .contract-badge {
+    padding: 4px 10px;
+  }
+
+  .contract-level,
+  .contract-strain {
+    font-size: 18px;
+  }
+
+  .phase-display {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+}
+
+/* Mobile portrait and landscape - reuse GamePage patterns */
+@media screen and (max-width: 767px) {
+  .bridge-game-page {
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    overflow: hidden;
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .bridge-game-page .table-area {
+    flex: 1;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+  }
+}
+
+/* Mobile landscape - optimized layout */
+@media screen and (max-width: 1024px) and (orientation: landscape) {
+  .bridge-game-page.is-mobile {
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .bridge-game-page.is-mobile .table-area {
+    flex: 1;
+    padding: 4px;
+    padding-left: calc(4px + env(safe-area-inset-left));
+    padding-right: calc(4px + env(safe-area-inset-right));
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  .bridge-game-page.is-mobile .bidding-overlay {
+    position: absolute;
+    right: calc(10px + env(safe-area-inset-right));
+    left: auto;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+  }
+
+  .bridge-game-page.is-mobile .bidding-panel {
+    width: 240px;
+    max-height: 200px;
+    padding: 10px;
+  }
+
+  .bridge-game-page.is-mobile .bid-btn {
+    padding: 4px 2px;
+    font-size: 10px;
+  }
+
+  .bridge-game-page.is-mobile .dummy-hand-overlay {
+    position: absolute;
+    left: calc(10px + env(safe-area-inset-left));
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+    max-width: 200px;
+  }
+
+  .bridge-game-page.is-mobile .score-overlay {
+    top: 10px;
+    gap: 8px;
+  }
+
+  .bridge-game-page.is-mobile .score-team {
+    padding: 4px 8px;
   }
 }

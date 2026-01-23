@@ -424,7 +424,8 @@ export function LobbyPage() {
 
         <div className="create-room">
           <div className="game-selector">
-            {(['whist', 'bridge', 'skitgubbe'] as GameType[]).map((gameType) => {
+            {/* Skitgubbe hidden until rules are finalized */}
+            {(['whist', 'bridge'] as GameType[]).map((gameType) => {
               const config = GAME_CONFIGS[gameType];
               return (
                 <button
